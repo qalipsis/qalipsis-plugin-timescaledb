@@ -1,0 +1,29 @@
+events:
+  export:
+    elasticsearch:
+      enabled: false
+      min-level: INFO
+      urls: http://localhost:9200
+      index-prefix: qalipsis-events
+      index-date-pattern: yyyy-MM-dd
+      duration-as-nano: false
+      linger-period: 10s
+      batch-size: 2000
+      publishers: 1
+      username:
+      password:
+      shards: 1
+      replicas: 0
+
+# Disables the native micronaut registry.
+micronaut.metrics.export.elastic.enabled: false
+
+meters:
+  elasticsearch:
+    hosts: http://localhost:9200
+    host: ${meters.elasticsearch.hosts}
+    enabled: false
+    step: PT10S
+    index: qalipsis-meters
+    index-date-format: yyyy-MM-dd
+    auto-create-index: true
