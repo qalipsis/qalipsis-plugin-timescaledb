@@ -1,3 +1,5 @@
+import org.jetbrains.kotlin.kapt3.base.Kapt.kapt
+
 plugins {
     kotlin("jvm")
     kotlin("kapt")
@@ -36,6 +38,13 @@ dependencies {
 
     api("io.qalipsis:api-common:${project.version}")
     api("io.qalipsis:api-dsl:${project.version}")
+
+
+    implementation("io.micronaut.liquibase:micronaut-liquibase")
+    implementation("org.jetbrains.kotlinx:kotlinx-coroutines-reactor")
+    implementation("io.r2dbc:r2dbc-postgresql") // todo place version
+    implementation("io.r2dbc:r2dbc-pool") // todo place version
+    implementation("io.r2dbc:r2dbc-spi") // todo place version
 
     kapt(platform("io.micronaut:micronaut-bom:$micronautVersion"))
     kapt("io.qalipsis:api-processors:${project.version}")
