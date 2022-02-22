@@ -2,6 +2,7 @@ package io.qalipsis.plugins.r2dbc.config
 
 import io.micronaut.context.annotation.ConfigurationProperties
 import io.micronaut.context.annotation.Requires
+import io.micronaut.core.bind.annotation.Bindable
 import io.qalipsis.api.constraints.PositiveDuration
 import io.qalipsis.api.events.EventLevel
 import java.time.Duration
@@ -26,24 +27,28 @@ import io.qalipsis.plugins.r2dbc.events.TimescaledbEventsPublisher
  */
 @Requires(property = "events.export.timescaledb.enabled", value = "true")
 @ConfigurationProperties("events.export.timescaledb")
-internal class TimescaledbEventsConfiguration {
+interface TimescaledbEventsConfiguration {
 
-    @field:NotNull
-    var minLevel: EventLevel = EventLevel.INFO
+    @get:NotNull
+    @get:Bindable(defaultValue = "INFO")
+    var minLevel: EventLevel
 
-    @field:NotEmpty
-    var host: List<@NotBlank String> = listOf("http://localhost:5432")
+    @get:NotEmpty
+    @get:Bindable(defaultValue = "http://localhost:5432")
+    var host: List<@NotBlank String>
 
-    @field:PositiveDuration
-    var lingerPeriod: Duration = Duration.ofSeconds(10)
+    @get:Bindable(defaultValue = "10S")
+    var lingerPeriod: Duration
 
-    @field:Min(1)
-    var batchSize: Int = 40000
+    @get:Min(1)
+    @get:Bindable(defaultValue = "40000")
+    var batchSize: Int
 
-    @field:Min(1)
-    var publishers: Int = 1
+    @get:Min(1)
+    @get:Bindable(defaultValue = "1")
+    var publishers: Int
 
-    var username: String? = null
+    var username: String
 
-    var password: String? = null
+    var password: String
 }

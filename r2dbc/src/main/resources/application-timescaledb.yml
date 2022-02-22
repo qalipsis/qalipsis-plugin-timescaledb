@@ -24,7 +24,7 @@ meters:
 
 r2dbc:
   datasources:
-    default:
+    monitoring:
       url: r2dbc:postgresql://localhost:5432/qalipsis
       username: qalipsis
       password: qalipsis
@@ -32,7 +32,7 @@ r2dbc:
       driverClassName: org.postgresql.Driver
 
 datasources:
-  default:
+  monitoring:
     url: jdbc:postgresql://localhost:5432/qalipsis
     username: qalipsis
     password: qalipsis
@@ -42,6 +42,6 @@ datasources:
 liquibase:
   enabled: true
   datasources:
-    default:
+    monitoring:
       change-log: 'classpath:db/liquibase-changelog.xml'
       liquibase-schema: qalipsis_liquibase
