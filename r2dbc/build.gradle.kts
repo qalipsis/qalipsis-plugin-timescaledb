@@ -23,6 +23,7 @@ allOpen {
 val micronautVersion: String by project
 val kotlinCoroutinesVersion: String by project
 val testContainersVersion: String by project
+val r2dbcVersion: String by project
 
 val catadioptreVersion: String by project
 
@@ -41,10 +42,10 @@ dependencies {
 
 
     implementation("io.micronaut.liquibase:micronaut-liquibase")
-    implementation("org.jetbrains.kotlinx:kotlinx-coroutines-reactor")
-    implementation("io.r2dbc:r2dbc-postgresql") // todo place version
-    implementation("io.r2dbc:r2dbc-pool") // todo place version
-    implementation("io.r2dbc:r2dbc-spi") // todo place version
+    implementation("org.jetbrains.kotlinx:kotlinx-coroutines-reactor:$kotlinCoroutinesVersion")
+    implementation("io.r2dbc:r2dbc-postgresql:${r2dbcVersion}") // todo place version
+    implementation("io.r2dbc:r2dbc-pool:${r2dbcVersion}") // todo place version
+    implementation("io.r2dbc:r2dbc-spi:${r2dbcVersion}") // todo place version
 
     kapt(platform("io.micronaut:micronaut-bom:$micronautVersion"))
     kapt("io.qalipsis:api-processors:${project.version}")
