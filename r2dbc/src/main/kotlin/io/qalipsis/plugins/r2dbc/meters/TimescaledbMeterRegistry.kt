@@ -11,6 +11,6 @@ internal class TimescaledbMeterRegistry(config: StepRegistryConfig, clock: Clock
     }
 
     override fun publish() {
-        TODO("Not yet implemented")
+//        TODO("Not yet implemented")
     }
 }

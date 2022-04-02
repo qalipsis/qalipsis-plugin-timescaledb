@@ -8,7 +8,6 @@ import io.qalipsis.plugins.r2dbc.events.TimescaledbEventsPublisher
 import java.time.Duration
 import javax.validation.constraints.Min
 import javax.validation.constraints.NotBlank
-import javax.validation.constraints.NotEmpty
 import javax.validation.constraints.NotNull
 
 /**
@@ -33,8 +32,8 @@ interface TimescaledbEventsConfiguration {
     val minLevel: EventLevel
 
     @get:Bindable(defaultValue = "http://localhost:5432")
-    @get:NotEmpty
-    val host: List<@NotBlank String>
+    @get:NotBlank
+    val host: String
 
     @get:Bindable(defaultValue = "10S")
     val lingerPeriod: Duration
@@ -47,7 +46,9 @@ interface TimescaledbEventsConfiguration {
     @get:Bindable(defaultValue = "1")
     val publishers: Int
 
+    @get:NotBlank
     val username: String
 
+    @get:NotBlank
     val password: String
 }

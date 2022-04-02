@@ -25,6 +25,8 @@ val kotlinCoroutinesVersion: String by project
 val testContainersVersion: String by project
 val r2dbcVersion: String by project
 
+val postgresqlDriverVersion = "42.3.1"
+
 val catadioptreVersion: String by project
 
 kotlin.sourceSets["test"].kotlin.srcDir("build/generated/source/kaptKotlin/catadioptre")
@@ -33,7 +35,6 @@ kapt.useBuildCache = false
 dependencies {
     compileOnly("io.aeris-consulting:catadioptre-annotations:${catadioptreVersion}")
     compileOnly(kotlin("stdlib"))
-    compileOnly(platform("io.micronaut:micronaut-bom:$micronautVersion"))
     compileOnly("io.micronaut:micronaut-runtime")
     compileOnly("org.jetbrains.kotlinx:kotlinx-coroutines-core:$kotlinCoroutinesVersion")
 
@@ -41,11 +42,15 @@ dependencies {
     api("io.qalipsis:api-dsl:${project.version}")
 
 
+    implementation(platform("io.micronaut:micronaut-bom:$micronautVersion"))
     implementation("io.micronaut.liquibase:micronaut-liquibase")
+    implementation("io.micronaut.sql:micronaut-jdbc-hikari")
+    implementation("io.micronaut.micrometer:micronaut-micrometer-core")
     implementation("org.jetbrains.kotlinx:kotlinx-coroutines-reactor:$kotlinCoroutinesVersion")
-    implementation("io.r2dbc:r2dbc-postgresql:${r2dbcVersion}") // todo place version
-    implementation("io.r2dbc:r2dbc-pool:${r2dbcVersion}") // todo place version
-    implementation("io.r2dbc:r2dbc-spi:${r2dbcVersion}") // todo place version
+    implementation("io.r2dbc:r2dbc-postgresql:${r2dbcVersion}")
+    implementation("io.r2dbc:r2dbc-pool:${r2dbcVersion}")
+    implementation("org.postgresql:postgresql:$postgresqlDriverVersion")
+    implementation("io.r2dbc:r2dbc-spi:${r2dbcVersion}")
 
     kapt(platform("io.micronaut:micronaut-bom:$micronautVersion"))
     kapt("io.qalipsis:api-processors:${project.version}")
@@ -54,16 +59,16 @@ dependencies {
     kapt("io.aeris-consulting:catadioptre-annotations:${catadioptreVersion}")
 
     testImplementation("io.qalipsis:test:${project.version}")
-    testImplementation("io.qalipsis:api-dsl:${project.version}")
-    testImplementation(testFixtures("io.qalipsis:api-dsl:${project.version}"))
-    testImplementation(testFixtures("io.qalipsis:api-common:${project.version}"))
-    testImplementation(testFixtures("io.qalipsis:runtime:${project.version}"))
+    testImplementation("io.micronaut.test:micronaut-test-junit5")
     testImplementation("javax.annotation:javax.annotation-api")
     testImplementation("io.micronaut:micronaut-runtime")
     testImplementation("io.aeris-consulting:catadioptre-kotlin:${catadioptreVersion}")
-    testRuntimeOnly("io.qalipsis:runtime:${project.version}")
+    testImplementation(testFixtures("io.qalipsis:api-dsl:${project.version}"))
+    testImplementation(testFixtures("io.qalipsis:api-common:${project.version}"))
+    testImplementation("org.testcontainers:testcontainers:${testContainersVersion}")
+    testImplementation("org.testcontainers:postgresql:${testContainersVersion}")
 
-    kaptTest(platform("io.micronaut:micronaut-bom:$micronautVersion"))
+    kaptTest(platform("io.micronaut:micronaut-bom:${micronautVersion}"))
     kaptTest("io.micronaut:micronaut-inject-java")
     kaptTest("io.qalipsis:api-processors:${project.version}")
 }

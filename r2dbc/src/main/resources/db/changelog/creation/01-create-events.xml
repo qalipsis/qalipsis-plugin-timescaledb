@@ -29,16 +29,16 @@
       <column name="error" type="text">
         <constraints nullable="true"/>
       </column>
-      <column name="date" type="timestampz">
+      <column name="stack_trace" type="text">
+        <constraints nullable="true"/>
+      </column>
+      <column name="date" type="TIMESTAMP">
         <constraints nullable="true"/>
       </column>
       <column name="boolean" type="boolean">
         <constraints nullable="true"/>
       </column>
       <column name="number" type="decimal(20,6)">
-        <constraints nullable="true"/>
-      </column>
-      <column name="non-finite-decimal" type="decimal(20,6)">
         <constraints nullable="true"/>
       </column>
       <column name="value" type="text">
