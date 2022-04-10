@@ -28,12 +28,12 @@ internal object PostgresTestContainerConfiguration {
     const val PASSWORD = "qalipsis-pwd"
 
     fun PostgreSQLContainer<*>.testProperties(): Map<String, String> = mapOf(
-        "datasources.default.url" to "jdbc:postgresql://localhost:${firstMappedPort}/$DB_NAME",
-        "datasources.default.username" to USERNAME,
-        "datasources.default.password" to PASSWORD,
-        "datasources.default.dialect" to "POSTGRES",
-        "datasources.default.driverClassName" to "org.postgresql.Driver",
-        "datasources.default.schema-generate" to "NONE",
+        "datasources.test.url" to "jdbc:postgresql://localhost:${firstMappedPort}/$DB_NAME",
+        "datasources.test.username" to USERNAME,
+        "datasources.test.password" to PASSWORD,
+        "datasources.test.dialect" to "POSTGRES",
+        "datasources.test.driverClassName" to "org.postgresql.Driver",
+        "datasources.test.schema-generate" to "NONE",
         "logging.level.io.micronaut.data.query" to "TRACE"
     )
 
@@ -55,5 +55,4 @@ internal object PostgresTestContainerConfiguration {
         result.start()
         return result
     }
-
 }

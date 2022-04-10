@@ -9,6 +9,7 @@ import io.micronaut.context.env.Environment
 import io.micronaut.core.naming.conventions.StringConvention
 import io.micronaut.core.util.StringUtils
 import io.qalipsis.api.meters.MetersConfig
+import io.qalipsis.plugins.r2dbc.meters.TimescaledbMeterConfig
 import io.qalipsis.plugins.r2dbc.meters.TimescaledbMeterRegistry
 import jakarta.inject.Singleton
 import java.util.Properties
@@ -31,7 +32,7 @@ internal class TimescaledbMeterRegistryFactory {
         properties.putAll(environment.getProperties(MetersConfig.CONFIGURATION, StringConvention.RAW))
         properties.putAll(environment.getProperties(MetersConfig.CONFIGURATION, StringConvention.CAMEL_CASE))
 
-        return TimescaledbMeterRegistry(object : StepRegistryConfig {
+        return TimescaledbMeterRegistry(object : TimescaledbMeterConfig() {
             override fun prefix() = "timescaledb"
             override fun get(key: String): String? {
                 return properties.getProperty(key)

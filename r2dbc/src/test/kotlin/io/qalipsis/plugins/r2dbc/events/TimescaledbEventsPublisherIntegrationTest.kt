@@ -77,7 +77,7 @@ internal class TimescaledbEventsPublisherIntegrationTest : PostgresqlTemplateTes
 
     @Test
     @Timeout(30)
-    internal fun `should save events data`() = testDispatcherProvider.run {
+     fun `should save events data`() = testDispatcherProvider.run {
         // given
         val publisher = TimescaledbEventsPublisher(
             this,
