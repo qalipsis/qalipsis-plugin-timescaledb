@@ -4,7 +4,7 @@ meters:
     host: localhost
     enabled: true
     port: 5432
-    db: qalipsis
-    schema: qalipsis
+    database: qalipsis
+    schema: qalipsis_ts
     username: qalipsis
     password: qalipsis

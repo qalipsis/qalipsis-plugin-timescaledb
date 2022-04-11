@@ -6,16 +6,19 @@ import io.qalipsis.api.Executors
 import io.qalipsis.api.events.AbstractBufferedEventsPublisher
 import io.qalipsis.api.events.Event
 import io.qalipsis.api.lang.durationSinceNanos
+import io.qalipsis.api.lang.tryAndLogOrNull
 import io.qalipsis.api.logging.LoggerHelper.logger
 import io.qalipsis.api.sync.SuspendedCountLatch
 import io.qalipsis.plugins.r2dbc.config.TimescaledbEventsConfiguration
 import io.r2dbc.pool.ConnectionPool
+import io.r2dbc.pool.ConnectionPoolConfiguration
+import io.r2dbc.postgresql.PostgresqlConnectionConfiguration
+import io.r2dbc.postgresql.PostgresqlConnectionFactory
 import io.r2dbc.spi.Statement
 import jakarta.inject.Named
 import jakarta.inject.Singleton
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.launch
-import kotlinx.coroutines.reactive.awaitFirstOrNull
 import kotlinx.coroutines.reactive.awaitLast
 import kotlinx.coroutines.runBlocking
 import liquibase.pro.packaged.T
@@ -39,8 +42,7 @@ internal class TimescaledbEventsPublisher(
     @Named(Executors.BACKGROUND_EXECUTOR_NAME) private val coroutineContext: CoroutineContext,
     private val configuration: TimescaledbEventsConfiguration,
     private val meterRegistry: MeterRegistry,
-    private val eventsConverter: TimescaledbEventConverter,
-    private val databaseClient: ConnectionPool
+    private val eventsConverter: TimescaledbEventConverter
 ) : AbstractBufferedEventsPublisher(
     configuration.minLevel,
     configuration.lingerPeriod,
@@ -50,7 +52,23 @@ internal class TimescaledbEventsPublisher(
 
     private lateinit var publicationLatch: SuspendedCountLatch
 
+    private lateinit var databaseClient: ConnectionPool
+
     override fun start() {
+        databaseClient = ConnectionPool(
+            ConnectionPoolConfiguration.builder()
+                .connectionFactory(
+                    PostgresqlConnectionFactory(
+                        PostgresqlConnectionConfiguration.builder().host(configuration.host)
+                            .username(configuration.username)
+                            .password(configuration.password)
+                            .database(configuration.database)
+                            .schema(configuration.schema)
+                            .port(configuration.port)
+                            .build()
+                    )
+                ).build()
+        )
         publicationLatch = SuspendedCountLatch(0)
         super.start()
     }
@@ -68,7 +86,6 @@ internal class TimescaledbEventsPublisher(
     }
 
     private suspend fun performPublish(values: List<Event>) {
-
         log.debug { "Sending ${values.size} events to Timescaledb" }
         val conversionStart = System.nanoTime()
         val timescaledbEvents = values.map { eventsConverter.convert(it) }
@@ -84,9 +101,8 @@ internal class TimescaledbEventsPublisher(
 
             databaseClient.create().flatMap {
                 val statement = it.createStatement(
-                    """
-                    insert into events (timestamp, level, tags, name, message, error, stack_trace, date, boolean, number, value, id) 
-                    values ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, nextval('events_seq'))"""
+                    """insert into events (timestamp, level, tags, name, message, error, stack_trace, date, boolean, number, value) 
+                    values ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11)"""
                 )
 
                 timescaledbEvents.mapIndexed { index, event ->
@@ -126,6 +142,9 @@ internal class TimescaledbEventsPublisher(
         runBlocking(coroutineContext) {
             log.debug { "Waiting for ${publicationLatch.get()} publication jobs to be completed" }
             publicationLatch.await()
+        }
+        tryAndLogOrNull(log) {
+            databaseClient.close()
         }
         log.debug { "The events logger was stopped" }
     }

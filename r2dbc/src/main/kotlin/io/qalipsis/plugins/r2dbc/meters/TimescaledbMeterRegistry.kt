@@ -39,8 +39,10 @@ internal class TimescaledbMeterRegistry(val config: TimescaledbMeterConfig, cloc
             ConnectionPoolConfiguration.builder()
                 .connectionFactory(
                     PostgresqlConnectionFactory(
-                        PostgresqlConnectionConfiguration.builder().host(config.get("timescaledb.host"))
-                            .password(config.get("timescaledb.password")).username(config.get("timescaledb.username"))
+                        PostgresqlConnectionConfiguration.builder()
+                            .host(config.get("timescaledb.host"))
+                            .username(config.get("timescaledb.username"))
+                            .password(config.get("timescaledb.password"))
                             .database(config.get("timescaledb.db"))
                             .schema(config.get("timescaledb.schema"))
                             .port(config.get("timescaledb.port").toInt())
@@ -97,9 +99,8 @@ internal class TimescaledbMeterRegistry(val config: TimescaledbMeterConfig, cloc
             runBlocking {
                 databaseClient.create().flatMap {
                     val statement = it.createStatement(
-                        """
-                    insert into meters (timestamp, type, count, value, sum, mean, active_tasks, duration, max, name, tags, other, id) 
-                    values ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, nextval('meters_seq'))"""
+                        """insert into meters (timestamp, type, count, value, sum, mean, active_tasks, duration, max, name, tags, other) 
+                    values ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12)"""
                     )
 
                     timescaledbMeters.mapIndexed { index, meter ->

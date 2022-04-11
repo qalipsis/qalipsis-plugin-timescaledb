@@ -9,6 +9,7 @@ import java.time.Duration
 import javax.validation.constraints.Min
 import javax.validation.constraints.NotBlank
 import javax.validation.constraints.NotNull
+import javax.validation.constraints.Positive
 
 /**
  * Configuration for [TimescaledbEventsPublisher].
@@ -31,9 +32,21 @@ interface TimescaledbEventsConfiguration {
     @get:NotNull
     val minLevel: EventLevel
 
-    @get:Bindable(defaultValue = "http://localhost:5432")
+    @get:Bindable(defaultValue = "localhost")
     @get:NotBlank
     val host: String
+
+    @get:Bindable(defaultValue = "5432")
+    @get:Positive
+    val port: Int
+
+    @get:Bindable(defaultValue = "qalipsis")
+    @get:NotBlank
+    val database: String
+
+    @get:Bindable(defaultValue = "qalipsis_ts")
+    @get:NotBlank
+    val schema: String
 
     @get:Bindable(defaultValue = "10S")
     val lingerPeriod: Duration

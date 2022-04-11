@@ -3,7 +3,6 @@ package io.qalipsis.plugins.r2dbc.meters
 import assertk.all
 import assertk.assertThat
 import assertk.assertions.any
-import assertk.assertions.hasSize
 import assertk.assertions.isEqualTo
 import assertk.assertions.isInstanceOf
 import assertk.assertions.prop
@@ -31,7 +30,6 @@ internal class TimescaledbMeterRegistryConfigIntegrationTest : PostgresqlTemplat
         @Timeout(10)
         fun `should start with the registry`() {
             assertThat(applicationContext.getBeansOfType(MeterRegistry::class.java)).all {
-                hasSize(1)
                 any { it.isInstanceOf(TimescaledbMeterRegistry::class) }
             }
             val meterRegistryConfig =
@@ -42,10 +40,9 @@ internal class TimescaledbMeterRegistryConfigIntegrationTest : PostgresqlTemplat
                 prop(TimescaledbMeterConfig::timestampFieldName).isEqualTo("timestamp")
                 prop(TimescaledbMeterConfig::userName).isEqualTo("qalipsis")
                 prop(TimescaledbMeterConfig::password).isEqualTo("qalipsis")
-                prop(TimescaledbMeterConfig::db).isEqualTo("qalipsis")
+                prop(TimescaledbMeterConfig::database).isEqualTo("qalipsis")
                 prop(TimescaledbMeterConfig::host).isEqualTo("localhost")
-                prop(TimescaledbMeterConfig::schema).isEqualTo("qalipsis")
-
+                prop(TimescaledbMeterConfig::schema).isEqualTo("qalipsis_ts")
             }
         }
     }

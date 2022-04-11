@@ -6,11 +6,7 @@
   xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog
          http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-4.4.xsd">
   <changeSet id="01" author="Gabriel Moraes">
-    <createSequence sequenceName="events_seq" schemaName="qalipsis"/>
-    <createTable tableName="events" schemaName="qalipsis">
-      <column name="id" type="BIGINT" valueSequenceNext="events_seq">
-        <constraints nullable="false" primaryKey="true" primaryKeyName="events_pk"/>
-      </column>
+    <createTable tableName="events" schemaName="qalipsis_ts">
       <column name="timestamp" type="TIMESTAMP">
         <constraints nullable="false"/>
       </column>

@@ -3,7 +3,6 @@ package io.qalipsis.plugins.r2dbc.meters
 import io.micrometer.core.instrument.Clock
 import io.micrometer.core.instrument.Counter
 import io.micrometer.core.instrument.Meter
-import io.qalipsis.plugins.r2dbc.config.PostgresTestContainerConfiguration
 import io.qalipsis.plugins.r2dbc.config.PostgresqlTemplateTest
 import io.r2dbc.pool.ConnectionPool
 import io.r2dbc.pool.ConnectionPoolConfiguration
@@ -14,12 +13,12 @@ import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.BeforeAll
 import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.Timeout
-import org.testcontainers.junit.jupiter.Testcontainers
 import reactor.core.publisher.Mono
 import java.util.Properties
 import java.util.concurrent.Executors
+import java.util.concurrent.TimeUnit
 
-@Testcontainers
+@Timeout(1, unit = TimeUnit.MINUTES)
 internal class TimescaledbMetersRegistryIntegrationTest : PostgresqlTemplateTest() {
 
     private lateinit var connectionPool: ConnectionPool
@@ -27,14 +26,14 @@ internal class TimescaledbMetersRegistryIntegrationTest : PostgresqlTemplateTest
     private lateinit var configuration: TimescaledbMeterConfig
 
     @BeforeAll
-    internal fun setUp() {
+    internal fun setUpAll() {
         val meterRegistryProperties = Properties()
-        meterRegistryProperties["timescaledb.username"] = PostgresTestContainerConfiguration.USERNAME
-        meterRegistryProperties["timescaledb.password"] = PostgresTestContainerConfiguration.PASSWORD
-        meterRegistryProperties["timescaledb.db"] = PostgresTestContainerConfiguration.DB_NAME
+        meterRegistryProperties["timescaledb.username"] = USERNAME
+        meterRegistryProperties["timescaledb.password"] = PASSWORD
+        meterRegistryProperties["timescaledb.db"] = DB_NAME
         meterRegistryProperties["timescaledb.host"] = "localhost"
-        meterRegistryProperties["timescaledb.port"] = pgsqlContainer.getMappedPort(5432).toString()
-        meterRegistryProperties["timescaledb.schema"] = "qalipsis"
+        meterRegistryProperties["timescaledb.port"] = "${postgresql.firstMappedPort}"
+        meterRegistryProperties["timescaledb.schema"] = "qalipsis_ts"
         meterRegistryProperties["batchSize"] = 2
         configuration = object : TimescaledbMeterConfig() {
             override fun get(key: String?): String? {
@@ -45,13 +44,12 @@ internal class TimescaledbMetersRegistryIntegrationTest : PostgresqlTemplateTest
             ConnectionPoolConfiguration.builder()
                 .connectionFactory(
                     PostgresqlConnectionFactory(
-                        PostgresqlConnectionConfiguration.builder().host("localhost")
-                            .password(PostgresTestContainerConfiguration.PASSWORD).username(
-                                PostgresTestContainerConfiguration.USERNAME
-                            )
-                            .database(PostgresTestContainerConfiguration.DB_NAME)
-                            .schema("qalipsis")
-                            .port(pgsqlContainer.getMappedPort(5432))
+                        PostgresqlConnectionConfiguration.builder()
+                            .host("localhost")
+                            .username(USERNAME).password(PASSWORD)
+                            .database(DB_NAME)
+                            .schema("qalipsis_ts")
+                            .port(postgresql.firstMappedPort)
                             .build()
                     )
                 ).build()

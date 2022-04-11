@@ -3,7 +3,9 @@ events:
     timescaledb:
       enabled: false
       min-level: INFO
-      host: http://localhost:9200
+      host: localhost:5432
+      database: qalipsis
+      schema: qalipsis_ts
       duration-as-nano: false
       linger-period: 10s
       batch-size: 2000
@@ -13,41 +15,29 @@ events:
 
 meters:
   timescaledb:
-    host: localhost
     enabled: false
+    host: localhost
     port: 5432
-    db: qalipsis_db
-    schema: qalipsis
+    database: qalipsis
+    schema: qalipsis_ts
     username: qalipsis_user
     password: qalipsis-pwd
     step: PT10S
-    index: qalipsis-meters
-    index-date-format: yyyy-MM-dd
 
-r2dbc:
-  datasources:
-    default:
-      url: r2dbc:postgresql://localhost:5432/qalipsis
-      username: qalipsis
-      password: qalipsis
-      dialect: POSTGRES
-      driverClassName: org.postgresql.Driver
-      schema: qalipsis
-      schema-generate: none
-
+# Required for the Liquibase script to be able to connect to the DB.
 datasources:
-  test:
+  qalipsis_ts:
     url: jdbc:postgresql://localhost:5432/qalipsis
     username: qalipsis
     password: qalipsis
     dialect: POSTGRES
     driverClassName: org.postgresql.Driver
-    schema: qalipsis
+    schema: qalipsis_ts
     schema-generate: none
 
 liquibase:
   enabled: true
   datasources:
-    default:
+    qalipsis_ts:
       change-log: 'classpath:db/liquibase-changelog.xml'
-      liquibase-schema: qalipsis_liquibase
+      liquibase-schema: qalipsis_ts

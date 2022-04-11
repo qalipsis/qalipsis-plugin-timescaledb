@@ -29,16 +29,15 @@ internal class TimescaledbMeterRegistryFactoryIntegrationTest : PostgresqlTempla
             return mutableMapOf(
                 "meters.enabled" to "false",
                 "meters.timescaledb.enabled" to "true",
-                "meters.timescaledb.password" to "qalipsis",
-                "meters.timescaledb.username" to "qalipsis",
-                "meters.bootstrap.port" to pgsqlContainer.getMappedPort(5432).toString()
+                "meters.timescaledb.port" to "${postgresql.firstMappedPort}",
+                "meters.timescaledb.username" to USERNAME,
+                "meters.timescaledb.password" to PASSWORD,
             )
         }
 
         @Test
         @Timeout(10)
         internal fun `shouldn't start without meters enabled property`() {
-            assertThat(applicationContext.getBeansOfType(MeterRegistry::class.java)).isEmpty()
             assertThat(applicationContext.getBeansOfType(TimescaledbMeterRegistry::class.java)).isEmpty()
         }
     }
@@ -54,16 +53,16 @@ internal class TimescaledbMeterRegistryFactoryIntegrationTest : PostgresqlTempla
             return mutableMapOf(
                 "meters.enabled" to "true",
                 "meters.timescaledb.enabled" to "false",
-                "meters.timescaledb.password" to "qalipsis",
-                "meters.timescaledb.username" to "qalipsis",
-                "meters.bootstrap.servers" to pgsqlContainer.getMappedPort(5432).toString()
+                "meters.timescaledb.port" to "${postgresql.firstMappedPort}",
+                "meters.timescaledb.username" to USERNAME,
+                "meters.timescaledb.password" to PASSWORD,
             )
         }
 
         @Test
         @Timeout(10)
         internal fun `shouldn't start without timescaledb meters enabled property`() {
-            assertThat(applicationContext.getBeansOfType(MeterRegistry::class.java)).isEmpty()
+            assertThat(applicationContext.getBeansOfType(MeterRegistry::class.java)).isNotEmpty()
             assertThat(applicationContext.getBeansOfType(TimescaledbMeterRegistry::class.java)).isEmpty()
         }
     }
@@ -79,9 +78,9 @@ internal class TimescaledbMeterRegistryFactoryIntegrationTest : PostgresqlTempla
             return mutableMapOf(
                 "meters.enabled" to "true",
                 "meters.timescaledb.enabled" to "true",
-                "meters.timescaledb.password" to "qalipsis",
-                "meters.timescaledb.username" to "qalipsis",
-                "meters.bootstrap.servers" to pgsqlContainer.getMappedPort(5432).toString()
+                "meters.timescaledb.port" to "${postgresql.firstMappedPort}",
+                "meters.timescaledb.username" to USERNAME,
+                "meters.timescaledb.password" to PASSWORD,
             )
         }
 

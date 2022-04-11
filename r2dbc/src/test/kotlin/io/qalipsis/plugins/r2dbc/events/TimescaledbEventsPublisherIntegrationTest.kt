@@ -7,9 +7,6 @@ import io.mockk.mockk
 import io.qalipsis.api.events.Event
 import io.qalipsis.api.events.EventLevel
 import io.qalipsis.api.events.EventTag
-import io.qalipsis.plugins.r2dbc.config.PostgresTestContainerConfiguration.DB_NAME
-import io.qalipsis.plugins.r2dbc.config.PostgresTestContainerConfiguration.PASSWORD
-import io.qalipsis.plugins.r2dbc.config.PostgresTestContainerConfiguration.USERNAME
 import io.qalipsis.plugins.r2dbc.config.PostgresqlTemplateTest
 import io.qalipsis.plugins.r2dbc.config.TimescaledbEventsConfiguration
 import io.qalipsis.test.mockk.relaxedMockk
@@ -22,16 +19,11 @@ import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.BeforeAll
 import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.Timeout
-import org.testcontainers.junit.jupiter.Testcontainers
 import reactor.core.publisher.Mono
 import java.time.Duration
 import java.util.concurrent.TimeUnit
 
-/**
- *
- * @author Gabriel Moraes
- */
-@Testcontainers
+
 @Timeout(1, unit = TimeUnit.MINUTES)
 internal class TimescaledbEventsPublisherIntegrationTest : PostgresqlTemplateTest() {
 
@@ -49,12 +41,15 @@ internal class TimescaledbEventsPublisherIntegrationTest : PostgresqlTemplateTes
     private lateinit var connectionPool: ConnectionPool
 
     @BeforeAll
-    internal fun setUp() {
+    fun setUp() {
         configuration = mockk {
-            every { host } returns getHost()
-            every { minLevel } returns EventLevel.TRACE
+            every { host } returns "localhost"
+            every { port } returns postgresql.firstMappedPort
+            every { database } returns DB_NAME
+            every { schema } returns "qalipsis_ts"
             every { username } returns USERNAME
             every { password } returns PASSWORD
+            every { minLevel } returns EventLevel.TRACE
             every { lingerPeriod } returns Duration.ofNanos(1)
             every { batchSize } returns 2
             every { publishers } returns 1
@@ -67,8 +62,8 @@ internal class TimescaledbEventsPublisherIntegrationTest : PostgresqlTemplateTes
                         PostgresqlConnectionConfiguration.builder().host("localhost")
                             .password(PASSWORD).username(USERNAME)
                             .database(DB_NAME)
-                            .schema("qalipsis")
-                            .port(pgsqlContainer.getMappedPort(5432))
+                            .schema("qalipsis_ts")
+                            .port(postgresql.firstMappedPort)
                             .build()
                     )
                 ).build()
@@ -77,15 +72,14 @@ internal class TimescaledbEventsPublisherIntegrationTest : PostgresqlTemplateTes
 
     @Test
     @Timeout(30)
-    internal fun `should save events data`() = testDispatcherProvider.run {
+    fun `should save events data`() = testDispatcherProvider.run {
         // given
         val publisher = TimescaledbEventsPublisher(
             this,
             this.coroutineContext,
             configuration,
             meterRegistry,
-            eventsConverter,
-            connectionPool
+            eventsConverter
         )
         publisher.start()
 
