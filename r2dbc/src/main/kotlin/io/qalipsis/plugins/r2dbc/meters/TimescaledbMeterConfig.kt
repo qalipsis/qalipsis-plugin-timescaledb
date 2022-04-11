@@ -19,7 +19,7 @@ abstract class TimescaledbMeterConfig : StepRegistryConfig {
     }
 
     fun db(): String {
-        return PropertyValidator.getString(this, "db").orElse("qalipsis")
+        return PropertyValidator.getString(this, "db").orElse("qalipsis_db")
     }
 
     fun schema(): String {
@@ -28,12 +28,12 @@ abstract class TimescaledbMeterConfig : StepRegistryConfig {
 
     @Nullable
     fun userName(): String? {
-        return PropertyValidator.getSecret(this, "username").orElse(null)
+        return PropertyValidator.getSecret(this, "username").orElse("qalipsis_user")
     }
 
     @Nullable
     fun password(): String? {
-        return PropertyValidator.getSecret(this, "password").orElse(null)
+        return PropertyValidator.getSecret(this, "password").orElse("qalipsis-pwd")
     }
 
     fun host(): String {

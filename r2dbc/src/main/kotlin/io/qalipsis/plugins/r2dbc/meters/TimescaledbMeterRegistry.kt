@@ -21,6 +21,7 @@ import io.r2dbc.pool.ConnectionPoolConfiguration
 import io.r2dbc.postgresql.PostgresqlConnectionConfiguration
 import io.r2dbc.postgresql.PostgresqlConnectionFactory
 import io.r2dbc.spi.Statement
+import kotlinx.coroutines.reactive.awaitLast
 import kotlinx.coroutines.runBlocking
 import reactor.core.publisher.Mono
 import java.time.Instant
@@ -93,26 +94,31 @@ internal class TimescaledbMeterRegistry(val config: TimescaledbMeterConfig, cloc
                     else -> convertMeter(it, timescaledbMeter)
                 }
             }
-            databaseClient.create().flatMap {
-                val statement = it.createStatement(
-                    """
+            runBlocking {
+                databaseClient.create().flatMap {
+                    val statement = it.createStatement(
+                        """
                     insert into meters (timestamp, type, count, value, sum, mean, active_tasks, duration, max, name, tags, other, id) 
                     values ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, nextval('meters_seq'))"""
-                )
+                    )
 
-                timescaledbMeters.mapIndexed { index, meter ->
-                    if (meter != null) {
-                        statement.bind(0, meter.timestamp).bind(1, meter.type)
-                            .bind(2, meter.count).bindOrNull(3, meter.value)
-                            .bindOrNull(4, meter.sum).bindOrNull(5, meter.mean)
-                            .bindOrNull(6, meter.activeTasks).bindOrNull(7, meter.duration)
-                            .bindOrNull(8, meter.max).bind(9, meter.name).bind(10, meter.tags)
-                            .bindOrNull(11, meter.other)
+                    timescaledbMeters.mapIndexed { index, meter ->
+                        if (meter != null) {
+                            statement.bind(0, meter.timestamp).bind(1, meter.type)
+                                .bind(2, meter.count).bindOrNull(3, meter.value)
+                                .bindOrNull(4, meter.sum).bindOrNull(5, meter.mean)
+                                .bindOrNull(6, meter.activeTasks).bindOrNull(7, meter.duration)
+                                .bindOrNull(8, meter.max).bind(9, meter.name).bind(10, meter.tags)
+                                .bindOrNull(11, meter.other)
+                            val hasAnotherElement = (index + 1) - timescaledbMeters.size != 0
+                            if (hasAnotherElement) statement.add()
+                        }
                     }
-                }
-                Mono.from(statement.execute())
-                    .map { it.rowsUpdated }
-                    .doOnTerminate { Mono.from(it.close()).subscribe() }
+
+                    Mono.from(statement.execute())
+                        .map { it.rowsUpdated }
+                        .doOnTerminate { Mono.from(it.close()).subscribe() }
+                }.awaitLast().awaitLast()
             }
             log.debug { "Successfully sent ${meters.size} meters to Timescaledb" }
         } catch (e: Throwable) {
@@ -247,6 +253,7 @@ internal class TimescaledbMeterRegistry(val config: TimescaledbMeterConfig, cloc
     }
 
     private fun Statement.bindOrNull(index: Int, value: Double?): Statement {
+        if (value == null) return bindOrNull(0.0, index, Double::class.java)
         return bindOrNull(value, index, Double::class.java)
     }
 

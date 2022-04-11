@@ -1,7 +1,6 @@
 package io.qalipsis.plugins.r2dbc.config
 
 import io.micrometer.core.instrument.Clock
-import io.micrometer.core.instrument.step.StepRegistryConfig
 import io.micronaut.context.annotation.Factory
 import io.micronaut.context.annotation.Requirements
 import io.micronaut.context.annotation.Requires

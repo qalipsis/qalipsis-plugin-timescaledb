@@ -21,7 +21,7 @@ import org.testcontainers.junit.jupiter.Testcontainers
 internal class TimescaledbMeterRegistryConfigIntegrationTest : PostgresqlTemplateTest() {
 
     @Nested
-    @MicronautTest(propertySources = ["classpath:application-timescaledb.yml"])
+    @MicronautTest(propertySources = ["classpath:application-timescaledb-test.yml"])
     inner class WithRegistry {
 
         @Inject

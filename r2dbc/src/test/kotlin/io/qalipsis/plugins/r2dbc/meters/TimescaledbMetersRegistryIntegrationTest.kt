@@ -3,16 +3,8 @@ package io.qalipsis.plugins.r2dbc.meters
 import io.micrometer.core.instrument.Clock
 import io.micrometer.core.instrument.Counter
 import io.micrometer.core.instrument.Meter
-import io.micronaut.context.BeanContext.run
-import io.micronaut.core.naming.conventions.StringConvention
-import io.mockk.every
-import io.mockk.mockk
-import io.qalipsis.api.meters.MetersConfig
 import io.qalipsis.plugins.r2dbc.config.PostgresTestContainerConfiguration
 import io.qalipsis.plugins.r2dbc.config.PostgresqlTemplateTest
-import io.qalipsis.plugins.r2dbc.meters.TimescaledbMeterConfig
-import io.qalipsis.plugins.r2dbc.meters.TimescaledbMeterRegistry
-import io.qalipsis.test.coroutines.TestDispatcherProvider
 import io.r2dbc.pool.ConnectionPool
 import io.r2dbc.pool.ConnectionPoolConfiguration
 import io.r2dbc.postgresql.PostgresqlConnectionConfiguration
@@ -41,7 +33,7 @@ internal class TimescaledbMetersRegistryIntegrationTest : PostgresqlTemplateTest
         meterRegistryProperties["timescaledb.password"] = PostgresTestContainerConfiguration.PASSWORD
         meterRegistryProperties["timescaledb.db"] = PostgresTestContainerConfiguration.DB_NAME
         meterRegistryProperties["timescaledb.host"] = "localhost"
-        meterRegistryProperties["timescaledb.port"] = "5432"
+        meterRegistryProperties["timescaledb.port"] = pgsqlContainer.getMappedPort(5432).toString()
         meterRegistryProperties["timescaledb.schema"] = "qalipsis"
         meterRegistryProperties["batchSize"] = 2
         configuration = object : TimescaledbMeterConfig() {
@@ -49,27 +41,6 @@ internal class TimescaledbMetersRegistryIntegrationTest : PostgresqlTemplateTest
                 return meterRegistryProperties.getProperty(key)
             }
         }
-
-//        {
-//            every { host() } returns "localhost"
-//            every { port() } returns "5432"
-//            every { db() } returns PostgresTestContainerConfiguration.DB_NAME
-//            every { schema() } returns "qalipsis"
-//            every { userName() } returns PostgresTestContainerConfiguration.USERNAME
-//            every { password() } returns PostgresTestContainerConfiguration.PASSWORD
-//            every { batchSize() } returns 2
-//        }
-
-//        configuration = mockk {
-//            every { host() } returns "localhost"
-//            every { port() } returns "5432"
-//            every { db() } returns PostgresTestContainerConfiguration.DB_NAME
-//            every { schema() } returns "qalipsis"
-//            every { userName() } returns PostgresTestContainerConfiguration.USERNAME
-//            every { password() } returns PostgresTestContainerConfiguration.PASSWORD
-//            every { batchSize() } returns 2
-//        }
-
         connectionPool = ConnectionPool(
             ConnectionPoolConfiguration.builder()
                 .connectionFactory(
@@ -89,7 +60,7 @@ internal class TimescaledbMetersRegistryIntegrationTest : PostgresqlTemplateTest
 
     @Test
     @Timeout(30)
-    fun `should export data`() = testDispatcherProvider.run{
+    fun `should export data`() = testDispatcherProvider.run {
         // given
         val meterRegistry = TimescaledbMeterRegistry(configuration, Clock.SYSTEM)
         meterRegistry.start(Executors.defaultThreadFactory())
@@ -112,7 +83,9 @@ internal class TimescaledbMetersRegistryIntegrationTest : PostgresqlTemplateTest
         val result = connectionPool.create().flatMap {
             val statement = it.createStatement("select count(*) from meters")
             Mono.from(statement.execute())
-                .map { it.map { row, _ -> row.get(0) as Long } }
+                .map {
+                    it.map { row, _ -> row.get(0) as Long }
+                }
                 .doOnTerminate { Mono.from(it.close()).subscribe() }
         }.awaitFirstOrNull()?.awaitFirstOrNull()
 

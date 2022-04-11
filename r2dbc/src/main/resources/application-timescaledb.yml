@@ -1,50 +1,53 @@
-#events:
-#  export:
-#    timescaledb:
-#      enabled: false
-#      min-level: INFO
-#      host: http://localhost:9200
-#      duration-as-nano: false
-#      linger-period: 10s
-#      batch-size: 2000
-#      publishers: 1
-#      username:
-#      password:
-#
-#meters:
-#  timescaledb:
-#    host: localhost
-#    enabled: false
-#    port: 5432
-#    db: qalipsis
-#    schema: qalipsis
-#    username: qalipsis
-#    password: qalipsis
-#
-#r2dbc:
-#  datasources:
-#    default:
-#      url: r2dbc:postgresql://localhost:5432/qalipsis
-#      username: qalipsis
-#      password: qalipsis
-#      dialect: POSTGRES
-#      driverClassName: org.postgresql.Driver
-#      schema: qalipsis
-#      schema-generate: none
-#
-#datasources:
-#  test:
-#    url: jdbc:postgresql://localhost:5432/qalipsis
-#    username: qalipsis
-#    password: qalipsis
-#    dialect: POSTGRES
-#    driverClassName: org.postgresql.Driver
-#    schema: qalipsis
-#    schema-generate: none
-#
-#liquibase:
-#  enabled: true
-#  datasources:
-#    default:
-#      change-log: 'classpath:db/liquibase-changelog.xml'
-#      liquibase-schema: qalipsis_liquibase
+events:
+  export:
+    timescaledb:
+      enabled: false
+      min-level: INFO
+      host: http://localhost:9200
+      duration-as-nano: false
+      linger-period: 10s
+      batch-size: 2000
+      publishers: 1
+      username:
+      password:
+
+meters:
+  timescaledb:
+    host: localhost
+    enabled: false
+    port: 5432
+    db: qalipsis_db
+    schema: qalipsis
+    username: qalipsis_user
+    password: qalipsis-pwd
+    step: PT10S
+    index: qalipsis-meters
+    index-date-format: yyyy-MM-dd
+
+r2dbc:
+  datasources:
+    default:
+      url: r2dbc:postgresql://localhost:5432/qalipsis
+      username: qalipsis
+      password: qalipsis
+      dialect: POSTGRES
+      driverClassName: org.postgresql.Driver
+      schema: qalipsis
+      schema-generate: none
+
+datasources:
+  test:
+    url: jdbc:postgresql://localhost:5432/qalipsis
+    username: qalipsis
+    password: qalipsis
+    dialect: POSTGRES
+    driverClassName: org.postgresql.Driver
+    schema: qalipsis
+    schema-generate: none
+
+liquibase:
+  enabled: true
+  datasources:
+    default:
+      change-log: 'classpath:db/liquibase-changelog.xml'
+      liquibase-schema: qalipsis_liquibase

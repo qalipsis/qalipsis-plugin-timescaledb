@@ -1,0 +1,10 @@
+meters:
+  enabled: true
+  timescaledb:
+    host: localhost
+    enabled: true
+    port: 5432
+    db: qalipsis
+    schema: qalipsis
+    username: qalipsis
+    password: qalipsis
