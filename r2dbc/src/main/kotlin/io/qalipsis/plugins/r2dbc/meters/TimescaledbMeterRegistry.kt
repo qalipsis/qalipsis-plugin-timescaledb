@@ -24,6 +24,7 @@ import io.r2dbc.spi.Statement
 import kotlinx.coroutines.reactive.awaitLast
 import kotlinx.coroutines.runBlocking
 import reactor.core.publisher.Mono
+import java.math.BigDecimal
 import java.time.Instant
 import java.util.Locale
 import java.util.concurrent.ThreadFactory
@@ -60,10 +61,11 @@ internal class TimescaledbMeterRegistry(val config: TimescaledbMeterConfig, cloc
             log.debug { "Waiting for ${publicationLatch.get()} publication jobs to be completed" }
             publicationLatch.await()
         }
-        log.debug { "The events logger was stopped" }
         tryAndLogOrNull(log) {
             databaseClient.close()
         }
+        log.debug { "The meter registry publisher was stopped" }
+
     }
 
     override fun getBaseTimeUnit(): TimeUnit {
@@ -83,7 +85,12 @@ internal class TimescaledbMeterRegistry(val config: TimescaledbMeterConfig, cloc
                         .append(StringEscapeUtils.escapeJson(tag.value)).append(", ")
                 }
                 val timescaledbMeter =
-                    TimescaledbMeter(timestamp = timestamp, type = type, name = name, tags = tagsForSave.toString())
+                    TimescaledbMeter(
+                        timestamp = timestamp,
+                        type = type,
+                        name = name,
+                        tags = tagsForSave.toString()
+                    )
                 when (it) {
                     is TimeGauge -> convertTimeGauge(it, timescaledbMeter)
                     is Gauge -> convertGauge(it, timescaledbMeter)
@@ -98,24 +105,26 @@ internal class TimescaledbMeterRegistry(val config: TimescaledbMeterConfig, cloc
             }
             runBlocking {
                 databaseClient.create().flatMap {
-                    val statement = it.createStatement(
-                        """insert into meters (timestamp, type, count, value, sum, mean, active_tasks, duration, max, name, tags, other) 
-                    values ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12)"""
-                    )
-
-                    timescaledbMeters.mapIndexed { index, meter ->
+                    val sql =
+                        StringBuilder("insert into meters (timestamp, type, count, value, sum, mean, active_tasks, duration, max, name, tags, other) values ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12)")
+                    var index = 13
+                    var size = timescaledbMeters.size - 1
+                    while (size > 0) {
+                        sql.append(", ($${index++}, $${index++}, $${index++}, $${index++}, $${index++}, $${index++}, $${index++}, $${index++}, $${index++}, $${index++}, $${index++}, $${index++})")
+                        size--
+                    }
+                    val statement = it.createStatement(sql.toString())
+                    var bindIndex = 0
+                    timescaledbMeters.forEach { meter ->
                         if (meter != null) {
-                            statement.bind(0, meter.timestamp).bind(1, meter.type)
-                                .bind(2, meter.count).bindOrNull(3, meter.value)
-                                .bindOrNull(4, meter.sum).bindOrNull(5, meter.mean)
-                                .bindOrNull(6, meter.activeTasks).bindOrNull(7, meter.duration)
-                                .bindOrNull(8, meter.max).bind(9, meter.name).bind(10, meter.tags)
-                                .bindOrNull(11, meter.other)
-                            val hasAnotherElement = (index + 1) - timescaledbMeters.size != 0
-                            if (hasAnotherElement) statement.add()
+                            statement.bind(bindIndex++, meter.timestamp).bind(bindIndex++, meter.type)
+                                .bind(bindIndex++, meter.count).bindOrNull(bindIndex++, meter.value)
+                                .bindOrNull(bindIndex++, meter.sum).bindOrNull(bindIndex++, meter.mean)
+                                .bindOrNull(bindIndex++, meter.activeTasks).bindOrNull(bindIndex++, meter.duration)
+                                .bindOrNull(bindIndex++, meter.max).bind(bindIndex++, meter.name)
+                                .bind(bindIndex++, meter.tags).bindOrNull(bindIndex++, meter.other)
                         }
                     }
-
                     Mono.from(statement.execute())
                         .map { it.rowsUpdated }
                         .doOnTerminate { Mono.from(it.close()).subscribe() }
@@ -146,7 +155,7 @@ internal class TimescaledbMeterRegistry(val config: TimescaledbMeterConfig, cloc
      */
     private fun convertCounter(value: Double, timescaledbMeter: TimescaledbMeter): TimescaledbMeter {
         if (java.lang.Double.isFinite(value)) {
-            return timescaledbMeter.copy(count = value)
+            return timescaledbMeter.copy(count = BigDecimal(value))
         }
         return timescaledbMeter
     }
@@ -157,7 +166,7 @@ internal class TimescaledbMeterRegistry(val config: TimescaledbMeterConfig, cloc
     private fun convertGauge(gauge: Gauge, timescaledbMeter: TimescaledbMeter): TimescaledbMeter {
         val value = gauge.value()
         if (java.lang.Double.isFinite(value)) {
-            return timescaledbMeter.copy(value = value)
+            return timescaledbMeter.copy(value = BigDecimal(value))
         }
         return timescaledbMeter
     }
@@ -168,7 +177,7 @@ internal class TimescaledbMeterRegistry(val config: TimescaledbMeterConfig, cloc
     private fun convertTimeGauge(gauge: TimeGauge, timescaledbMeter: TimescaledbMeter): TimescaledbMeter {
         val value = gauge.value(baseTimeUnit)
         if (java.lang.Double.isFinite(value)) {
-            return timescaledbMeter.copy(value = value)
+            return timescaledbMeter.copy(value = BigDecimal(value))
         }
         return timescaledbMeter
     }
@@ -179,14 +188,17 @@ internal class TimescaledbMeterRegistry(val config: TimescaledbMeterConfig, cloc
     private fun convertFunctionTimer(timer: FunctionTimer, timescaledbMeter: TimescaledbMeter): TimescaledbMeter {
         val sum = timer.totalTime(baseTimeUnit)
         val mean = timer.mean(TimeUnit.MILLISECONDS)
-        return timescaledbMeter.copy(count = timer.count(), sum = sum, mean = mean)
+        return timescaledbMeter.copy(count = BigDecimal(timer.count()), sum = BigDecimal(sum), mean = BigDecimal(mean))
     }
 
     /**
      * Timescaledb converter for LongTaskTimer.
      */
     private fun convertLongTaskTimer(timer: LongTaskTimer, timescaledbMeter: TimescaledbMeter): TimescaledbMeter {
-        return timescaledbMeter.copy(activeTasks = timer.activeTasks(), duration = timer.duration(baseTimeUnit))
+        return timescaledbMeter.copy(
+            activeTasks = timer.activeTasks(),
+            duration = BigDecimal(timer.duration(baseTimeUnit))
+        )
     }
 
     /**
@@ -194,10 +206,10 @@ internal class TimescaledbMeterRegistry(val config: TimescaledbMeterConfig, cloc
      */
     private fun convertTimer(timer: Timer, timescaledbMeter: TimescaledbMeter): TimescaledbMeter {
         return timescaledbMeter.copy(
-            count = timer.count().toDouble(),
-            sum = timer.totalTime(baseTimeUnit),
-            mean = timer.mean(baseTimeUnit),
-            max = timer.max(baseTimeUnit)
+            count = BigDecimal(timer.count().toDouble()),
+            sum = BigDecimal(timer.totalTime(baseTimeUnit)),
+            mean = BigDecimal(timer.mean(baseTimeUnit)),
+            max = BigDecimal(timer.max(baseTimeUnit))
         )
     }
 
@@ -207,10 +219,10 @@ internal class TimescaledbMeterRegistry(val config: TimescaledbMeterConfig, cloc
     private fun convertSummary(summary: DistributionSummary, timescaledbMeter: TimescaledbMeter): TimescaledbMeter {
         val histogramSnapshot = summary.takeSnapshot()
         return timescaledbMeter.copy(
-            count = histogramSnapshot.count().toDouble(),
-            sum = histogramSnapshot.total(),
-            mean = histogramSnapshot.mean(),
-            max = histogramSnapshot.max()
+            count = BigDecimal(histogramSnapshot.count().toDouble()),
+            sum = BigDecimal(histogramSnapshot.total()),
+            mean = BigDecimal(histogramSnapshot.mean()),
+            max = BigDecimal(histogramSnapshot.max())
         )
     }
 
@@ -253,13 +265,12 @@ internal class TimescaledbMeterRegistry(val config: TimescaledbMeterConfig, cloc
         return getConventionName(meter.id)
     }
 
-    private fun Statement.bindOrNull(index: Int, value: Double?): Statement {
-        if (value == null) return bindOrNull(0.0, index, Double::class.java)
-        return bindOrNull(value, index, Double::class.java)
-    }
-
     private fun Statement.bindOrNull(index: Int, value: Int?): Statement {
         return bindOrNull(value, index, Integer::class.java)
+    }
+
+    private fun Statement.bindOrNull(index: Int, value: BigDecimal?): Statement {
+        return bindOrNull(value, index, BigDecimal::class.java)
     }
 
     private fun Statement.bindOrNull(index: Int, value: String?): Statement {

@@ -37,7 +37,7 @@ abstract class TimescaledbMeterConfig : StepRegistryConfig {
 
     @Nullable
     fun password(): String? {
-        return PropertyValidator.getSecret(this, "password").orElse("qalipsis_pwd")
+        return PropertyValidator.getSecret(this, "password").orElse("qalipsis-pwd")
     }
 
     fun schema(): String {

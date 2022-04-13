@@ -2,7 +2,7 @@ package io.qalipsis.plugins.r2dbc.meters
 
 import io.micrometer.core.instrument.Clock
 import io.micrometer.core.instrument.Counter
-import io.micrometer.core.instrument.Meter
+import io.micrometer.core.instrument.DistributionSummary
 import io.qalipsis.plugins.r2dbc.config.PostgresqlTemplateTest
 import io.r2dbc.pool.ConnectionPool
 import io.r2dbc.pool.ConnectionPoolConfiguration
@@ -14,9 +14,12 @@ import org.junit.jupiter.api.BeforeAll
 import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.Timeout
 import reactor.core.publisher.Mono
+import java.time.LocalDateTime
+import java.time.ZoneOffset
 import java.util.Properties
 import java.util.concurrent.Executors
 import java.util.concurrent.TimeUnit
+
 
 @Timeout(1, unit = TimeUnit.MINUTES)
 internal class TimescaledbMetersRegistryIntegrationTest : PostgresqlTemplateTest() {
@@ -63,16 +66,12 @@ internal class TimescaledbMetersRegistryIntegrationTest : PostgresqlTemplateTest
         val meterRegistry = TimescaledbMeterRegistry(configuration, Clock.SYSTEM)
         meterRegistry.start(Executors.defaultThreadFactory())
 
-        val meters = mutableListOf<Meter>()
-
-        val firstCounter = Counter.builder("first").register(meterRegistry)
-        firstCounter.increment(8.0)
-
         val secondCounter = Counter.builder("second").register(meterRegistry)
         secondCounter.increment(3.0)
-
-        meters.add(secondCounter)
-        meters.add(firstCounter)
+        val firstCounter = Counter.builder("first").tag("first-tag-key", "first-tag-value").register(meterRegistry)
+        firstCounter.increment(8.0)
+        val distributionSummary =
+            DistributionSummary.builder("summary").tag("summary-tag", "summary-value").register(meterRegistry)
 
         // when
         meterRegistry.publish()
@@ -81,25 +80,50 @@ internal class TimescaledbMetersRegistryIntegrationTest : PostgresqlTemplateTest
         val result = connectionPool.create().flatMap {
             val statement = it.createStatement("select count(*) from meters")
             Mono.from(statement.execute())
-                .map {
-                    it.map { row, _ -> row.get(0) as Long }
-                }
+                .map { it.map { row, _ -> row.get(0) as Long } }
                 .doOnTerminate { Mono.from(it.close()).subscribe() }
         }.awaitFirstOrNull()?.awaitFirstOrNull()
 
-        assertEquals(2, result)
+        assertEquals(3, result)
 
-
-        val published = connectionPool.create().flatMap {
-            val statement = it.createStatement("select * from meters")
+        val counters = connectionPool.create().flatMap {
+            val statement = it.createStatement("select count(*) from meters where type='counter'")
             Mono.from(statement.execute())
                 .map { it.map { row, _ -> row.get(0) as Long } }
                 .doOnTerminate { Mono.from(it.close()).subscribe() }
         }.awaitFirstOrNull()?.awaitFirstOrNull()
 
-        print(published)
-//        assertThat(published[0]).isEqualTo("smth")
-//        assertThat(published[1]).isEqualTo("smth")
+        assertEquals(2, counters)
+
+        val summaries = connectionPool.create().flatMap {
+            val statement = it.createStatement("select count(*) from meters where type='distribution_summary'")
+            Mono.from(statement.execute())
+                .map { it.map { row, _ -> row.get(0) as Long } }
+                .doOnTerminate { Mono.from(it.close()).subscribe() }
+        }.awaitFirstOrNull()?.awaitFirstOrNull()
+
+        assertEquals(1, summaries)
+
+        val summary = connectionPool.create().flatMap {
+            val statement =
+                it.createStatement("select type, name, tags, timestamp  from meters where type='distribution_summary'")
+            Mono.from(statement.execute())
+                .map {
+                    it.map { row, _ ->
+                        TimescaledbMeter(
+                            name = row.get(1) as String,
+                            type = row.get(0) as String,
+                            timestamp = (row.get(3) as LocalDateTime).toInstant(ZoneOffset.UTC),
+                            tags = row.get(2) as String
+                        )
+                    }
+                }
+                .doOnTerminate { Mono.from(it.close()).subscribe() }
+        }.awaitFirstOrNull()?.awaitFirstOrNull()
+
+        assertEquals("distribution_summary", summary!!.type)
+        assertEquals("summary", summary.name)
+        assertEquals("summary-tag:summary-value, ", summary.tags)
 
         meterRegistry.stop()
     }
