@@ -21,14 +21,13 @@ import io.r2dbc.pool.ConnectionPoolConfiguration
 import io.r2dbc.postgresql.PostgresqlConnectionConfiguration
 import io.r2dbc.postgresql.PostgresqlConnectionFactory
 import io.r2dbc.spi.Statement
-import kotlinx.coroutines.reactive.awaitLast
 import kotlinx.coroutines.runBlocking
-import reactor.core.publisher.Mono
 import java.math.BigDecimal
 import java.time.Instant
 import java.util.Locale
 import java.util.concurrent.ThreadFactory
 import java.util.concurrent.TimeUnit
+import java.util.concurrent.atomic.AtomicInteger
 
 internal class TimescaledbMeterRegistry(val config: TimescaledbMeterConfig, clock: Clock) :
     StepMeterRegistry(config, clock) {
@@ -73,66 +72,66 @@ internal class TimescaledbMeterRegistry(val config: TimescaledbMeterConfig, cloc
     }
 
     public override fun publish() {
-        try {
-            val timescaledbMeters = meters.map {
-                val timestamp = generateTimestamp()
-                val name = getName(it)
-                val type = it.id.type.toString().lowercase(Locale.getDefault())
-                val tags = getTags(it)
-                val tagsForSave = StringBuilder("")
-                for (tag in tags) {
-                    tagsForSave.append(StringEscapeUtils.escapeJson(tag.key)).append(":")
-                        .append(StringEscapeUtils.escapeJson(tag.value)).append(", ")
-                }
-                val timescaledbMeter =
-                    TimescaledbMeter(
-                        timestamp = timestamp,
-                        type = type,
-                        name = name,
-                        tags = tagsForSave.toString()
-                    )
-                when (it) {
-                    is TimeGauge -> convertTimeGauge(it, timescaledbMeter)
-                    is Gauge -> convertGauge(it, timescaledbMeter)
-                    is Counter -> convertCounter(it, timescaledbMeter)
-                    is Timer -> convertTimer(it, timescaledbMeter)
-                    is DistributionSummary -> convertSummary(it, timescaledbMeter)
-                    is LongTaskTimer -> convertLongTaskTimer(it, timescaledbMeter)
-                    is FunctionCounter -> convertFunctionCounter(it, timescaledbMeter)
-                    is FunctionTimer -> convertFunctionTimer(it, timescaledbMeter)
-                    else -> convertMeter(it, timescaledbMeter)
-                }
+        val timescaledbMeters = meters.mapNotNull {
+            val timestamp = generateTimestamp()
+            val name = getName(it)
+            val type = it.id.type.toString().lowercase(Locale.getDefault())
+            val tags = getTags(it)
+            val tagsForSave = StringBuilder("")
+            for (tag in tags) {
+                tagsForSave.append(StringEscapeUtils.escapeJson(tag.key)).append(":")
+                    .append(StringEscapeUtils.escapeJson(tag.value)).append(", ")
             }
-            runBlocking {
-                databaseClient.create().flatMap {
-                    val sql =
-                        StringBuilder("insert into meters (timestamp, type, count, value, sum, mean, active_tasks, duration, max, name, tags, other) values ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12)")
-                    var index = 13
-                    var size = timescaledbMeters.size - 1
-                    while (size > 0) {
-                        sql.append(", ($${index++}, $${index++}, $${index++}, $${index++}, $${index++}, $${index++}, $${index++}, $${index++}, $${index++}, $${index++}, $${index++}, $${index++})")
-                        size--
-                    }
-                    val statement = it.createStatement(sql.toString())
-                    var bindIndex = 0
-                    timescaledbMeters.forEach { meter ->
-                        if (meter != null) {
-                            statement.bind(bindIndex++, meter.timestamp).bind(bindIndex++, meter.type)
-                                .bind(bindIndex++, meter.count).bindOrNull(bindIndex++, meter.value)
-                                .bindOrNull(bindIndex++, meter.sum).bindOrNull(bindIndex++, meter.mean)
-                                .bindOrNull(bindIndex++, meter.activeTasks).bindOrNull(bindIndex++, meter.duration)
-                                .bindOrNull(bindIndex++, meter.max).bind(bindIndex++, meter.name)
-                                .bind(bindIndex++, meter.tags).bindOrNull(bindIndex++, meter.other)
+            val timescaledbMeter =
+                TimescaledbMeter(
+                    timestamp = timestamp,
+                    type = type,
+                    name = name,
+                    tags = tagsForSave.toString()
+                )
+            when (it) {
+                is TimeGauge -> convertTimeGauge(it, timescaledbMeter)
+                is Gauge -> convertGauge(it, timescaledbMeter)
+                is Counter -> convertCounter(it, timescaledbMeter)
+                is Timer -> convertTimer(it, timescaledbMeter)
+                is DistributionSummary -> convertSummary(it, timescaledbMeter)
+                is LongTaskTimer -> convertLongTaskTimer(it, timescaledbMeter)
+                is FunctionCounter -> convertFunctionCounter(it, timescaledbMeter)
+                is FunctionTimer -> convertFunctionTimer(it, timescaledbMeter)
+                else -> convertMeter(it, timescaledbMeter)
+            }
+        }
+
+        tryAndLogOrNull(log) {
+            val updatedRows = AtomicInteger()
+            databaseClient.create().map { connection ->
+                connection.createStatement(SQL).also { statement ->
+                    timescaledbMeters.forEachIndexed { index, meter ->
+                        var bindIndex = 0
+                        statement.bind(bindIndex++, meter.timestamp)
+                            .bind(bindIndex++, meter.type)
+                            .bindOrNull(bindIndex++, meter.count)
+                            .bindOrNull(bindIndex++, meter.value)
+                            .bindOrNull(bindIndex++, meter.sum)
+                            .bindOrNull(bindIndex++, meter.mean)
+                            .bindOrNull(bindIndex++, meter.activeTasks)
+                            .bindOrNull(bindIndex++, meter.duration)
+                            .bindOrNull(bindIndex++, meter.max)
+                            .bind(bindIndex++, meter.name)
+                            .bind(bindIndex++, meter.tags)
+                            .bindOrNull(bindIndex, meter.other)
+                        if (index < timescaledbMeters.size - 1) {
+                            statement.add()
                         }
                     }
-                    Mono.from(statement.execute())
-                        .map { it.rowsUpdated }
-                        .doOnTerminate { Mono.from(it.close()).subscribe() }
-                }.awaitLast().awaitLast()
-            }
-            log.debug { "Successfully sent ${meters.size} meters to Timescaledb" }
-        } catch (e: Throwable) {
-            log.error(e) { "Failed to send metrics to Timescaledb" }
+                }
+            }.flux()
+                .flatMap { statement -> statement.execute() }
+                .flatMap { it.rowsUpdated }
+                .doOnNext(updatedRows::addAndGet)
+                .blockLast()
+
+            log.debug { "Successfully sent ${updatedRows.get()} meters to Timescaledb" }
         }
     }
 
@@ -286,6 +285,9 @@ internal class TimescaledbMeterRegistry(val config: TimescaledbMeterConfig, cloc
     }
 
     private companion object {
+
+        const val SQL =
+            "INSERT into meters (timestamp, type, count, value, sum, mean, active_tasks, duration, max, name, tags, other) values ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12)"
 
         val log = logger()
     }

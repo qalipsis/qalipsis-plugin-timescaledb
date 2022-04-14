@@ -21,13 +21,12 @@ import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.reactive.awaitLast
 import kotlinx.coroutines.runBlocking
-import liquibase.pro.packaged.T
-import reactor.core.publisher.Mono
 import java.math.BigDecimal
 import java.time.Duration
 import java.time.Instant
 import java.time.LocalDateTime
 import java.time.ZonedDateTime
+import java.util.concurrent.atomic.AtomicInteger
 import kotlin.coroutines.CoroutineContext
 
 /**
@@ -98,35 +97,38 @@ internal class TimescaledbEventsPublisher(
 
         val exportStart = System.nanoTime()
         try {
-
-            databaseClient.create().flatMap {
-                val statement = it.createStatement(
-                    """insert into events (timestamp, level, tags, name, message, error, stack_trace, date, boolean, number, value) 
-                    values ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11)"""
-                )
-
-                timescaledbEvents.mapIndexed { index, event ->
-                    statement.bind(0, event.timestamp)
-                        .bind(1, event.level).bind(2, event.tags)
-                        .bind(3, event.name).bindOrNull(4, event.message)
-                        .bindOrNull(5, event.error).bindOrNull(6, event.stackTrace)
-                        .bindOrNull(7, event.date).bindOrNull(8, event.boolean)
-                        .bindOrNull(9, event.number).bindOrNull(10, event.value)
-                    val hasAnotherElement = (index + 1) - numberOfSentConverted != 0
-                    if (hasAnotherElement) statement.add()
+            val updatedRows = AtomicInteger()
+            databaseClient.create().map { connection ->
+                connection.createStatement(SQL).also { statement ->
+                    timescaledbEvents.forEachIndexed { index, event ->
+                        var bindIndex = 0
+                        statement.bind(bindIndex++, event.timestamp)
+                            .bind(bindIndex++, event.level)
+                            .bind(bindIndex++, event.tags)
+                            .bind(bindIndex++, event.name)
+                            .bindOrNull(bindIndex++, event.message)
+                            .bindOrNull(bindIndex++, event.error)
+                            .bindOrNull(bindIndex++, event.stackTrace)
+                            .bindOrNull(bindIndex++, event.date)
+                            .bindOrNull(bindIndex++, event.boolean)
+                            .bindOrNull(bindIndex++, event.number)
+                            .bindOrNull(bindIndex, event.value)
+                        if (index < timescaledbEvents.size - 1) {
+                            statement.add()
+                        }
+                    }
                 }
-
-                Mono.from(statement.execute())
-                    .map { it.rowsUpdated }
-                    .doOnTerminate { Mono.from(it.close()).subscribe() }
-            }.awaitLast().awaitLast()
-
+            }.flux()
+                .flatMap { statement -> statement.execute() }
+                .flatMap { it.rowsUpdated }
+                .doOnNext(updatedRows::addAndGet)
+                .awaitLast()
             val exportEnd = System.nanoTime()
 
             meterRegistry.timer(EVENTS_EXPORT_TIMER_NAME, "publisher", "timescaledb", "status", "success")
                 .record(Duration.ofNanos(exportEnd - exportStart))
 
-            log.debug { "onSuccess totally processed" }
+            log.debug { "${updatedRows.get()} events were successfully published" }
         } catch (e: Exception) {
             log.debug { "failed to persist events" }
             meterRegistry.timer(EVENTS_EXPORT_TIMER_NAME, "publisher", "timescaledb", "status", "error")
@@ -147,19 +149,6 @@ internal class TimescaledbEventsPublisher(
             databaseClient.close()
         }
         log.debug { "The events logger was stopped" }
-    }
-
-    companion object {
-
-
-        private const val EVENTS_CONVERSIONS_TIMER_NAME = "timescaledb.events.conversion"
-
-        private const val EVENTS_COUNT_TIMER_NAME = "timescaledb.events.converted"
-
-        private const val EVENTS_EXPORT_TIMER_NAME = "timescaledb.events.export"
-
-        @JvmStatic
-        private val log = logger()
     }
 
     private fun Statement.bindOrNull(index: Int, value: LocalDateTime?): Statement {
@@ -192,5 +181,19 @@ internal class TimescaledbEventsPublisher(
         } else {
             this.bindNull(index, type)
         }
+    }
+
+    companion object {
+
+        const val SQL =
+            "INSERT into meters (timestamp, level, tags, name, message, error, stack_trace, date, boolean, number, value) values ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11)"
+
+        private const val EVENTS_CONVERSIONS_TIMER_NAME = "timescaledb.events.conversion"
+
+        private const val EVENTS_COUNT_TIMER_NAME = "timescaledb.events.converted"
+
+        private const val EVENTS_EXPORT_TIMER_NAME = "timescaledb.events.export"
+
+        private val log = logger()
     }
 }
