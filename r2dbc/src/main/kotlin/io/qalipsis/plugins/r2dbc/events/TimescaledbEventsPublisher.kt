@@ -186,7 +186,7 @@ internal class TimescaledbEventsPublisher(
     companion object {
 
         const val SQL =
-            "INSERT into meters (timestamp, level, tags, name, message, error, stack_trace, date, boolean, number, value) values ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11)"
+            "INSERT into events (timestamp, level, tags, name, message, error, stack_trace, date, boolean, number, value) values ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11)"
 
         private const val EVENTS_CONVERSIONS_TIMER_NAME = "timescaledb.events.conversion"
 

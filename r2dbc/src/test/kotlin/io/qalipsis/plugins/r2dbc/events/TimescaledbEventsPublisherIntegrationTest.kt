@@ -94,7 +94,7 @@ internal class TimescaledbEventsPublisherIntegrationTest : PostgresqlTemplateTes
                 .doOnTerminate { Mono.from(it.close()).subscribe() }
         }.awaitFirstOrNull()?.awaitFirstOrNull()
 
-        assertEquals(1, result)
+        assertEquals(2, result)
 
         publisher.stop()
     }
@@ -109,7 +109,14 @@ internal class TimescaledbEventsPublisherIntegrationTest : PostgresqlTemplateTes
                 value = 123.2
             )
         )
+        events.add(
+            Event(
+                name = "my-number-2",
+                EventLevel.ERROR,
+                tags = listOf(EventTag("key-3", "value-3"), EventTag("key-4", "value-4")),
+                value = 118
+            )
+        )
         return events
     }
-
 }
