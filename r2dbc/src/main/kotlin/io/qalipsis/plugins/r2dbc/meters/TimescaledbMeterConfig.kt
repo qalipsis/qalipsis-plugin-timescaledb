@@ -12,7 +12,7 @@ import io.micrometer.core.lang.Nullable
  *
  * @author Palina Bril
  */
-abstract class TimescaledbMeterConfig : StepRegistryConfig {
+internal abstract class TimescaledbMeterConfig : StepRegistryConfig {
 
     override fun prefix(): String {
         return "timescaledb"

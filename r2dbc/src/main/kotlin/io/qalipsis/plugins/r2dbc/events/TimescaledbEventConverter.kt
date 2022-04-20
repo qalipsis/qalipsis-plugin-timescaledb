@@ -2,8 +2,6 @@ package io.qalipsis.plugins.r2dbc.events
 
 import io.qalipsis.api.events.Event
 import io.qalipsis.api.events.EventConverter
-import io.qalipsis.api.events.EventGeoPoint
-import io.qalipsis.api.events.EventRange
 import jakarta.inject.Singleton
 import java.io.IOException
 import java.io.PrintWriter
@@ -14,7 +12,6 @@ import java.time.LocalDateTime
 import java.time.ZoneId
 import java.time.ZonedDateTime
 import java.time.format.DateTimeFormatter
-import java.time.temporal.TemporalAccessor
 
 /**
  * Implementation of [EventConverter] to generate a [TimescaledbEvent].
@@ -22,7 +19,7 @@ import java.time.temporal.TemporalAccessor
  * @author Gabriel Moraes
  */
 @Singleton
-class TimescaledbEventConverter : EventConverter<TimescaledbEvent> {
+internal class TimescaledbEventConverter : EventConverter<TimescaledbEvent> {
 
     /**
      * Generates a [TimescaledbEvent] representation of an event.
@@ -45,7 +42,7 @@ class TimescaledbEventConverter : EventConverter<TimescaledbEvent> {
     private fun addValue(value: Any, timescaledbEvent: TimescaledbEvent): TimescaledbEvent {
         return when {
             value is String -> {
-               timescaledbEvent.copy(message = value)
+                timescaledbEvent.copy(message = value)
             }
             value is Boolean -> {
                 timescaledbEvent.copy(boolean = value)
@@ -54,13 +51,13 @@ class TimescaledbEventConverter : EventConverter<TimescaledbEvent> {
                 timescaledbEvent.copy(number = BigDecimal(value.toDouble()))
             }
             value is Instant -> {
-                timescaledbEvent.copy(date = value)
+                timescaledbEvent.copy(instant = value)
             }
             value is ZonedDateTime -> {
-                timescaledbEvent.copy(date = value.toInstant())
+                timescaledbEvent.copy(instant = value.toInstant())
             }
             value is LocalDateTime -> {
-                timescaledbEvent.copy(date = value.atZone(ZoneId.systemDefault()).toInstant())
+                timescaledbEvent.copy(instant = value.atZone(ZoneId.systemDefault()).toInstant())
             }
             value is Throwable -> {
                 timescaledbEvent.copy(error = value.message, stackTrace = stackTraceToString(value))

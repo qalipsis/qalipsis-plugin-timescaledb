@@ -8,16 +8,16 @@ import java.time.Instant
  *
  * @author Gabriel Moraes
  */
-data class TimescaledbEvent(
+internal data class TimescaledbEvent(
     val id: Long? = null,
     val timestamp: Instant,
     val level: String,
     val tags: String,
     val name: String,
-    val message: String?= null,
-    val stackTrace: String?= null,
+    val message: String? = null,
+    val stackTrace: String? = null,
     val error: String? = null,
-    val date: Instant? = null,
+    val instant: Instant? = null,
     val boolean: Boolean = false,
     val number: BigDecimal? = null,
     val value: String? = null

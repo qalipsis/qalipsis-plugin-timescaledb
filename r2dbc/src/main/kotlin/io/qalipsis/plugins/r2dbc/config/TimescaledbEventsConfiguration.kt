@@ -26,7 +26,7 @@ import javax.validation.constraints.Positive
  */
 @Requires(property = "events.export.timescaledb.enabled", value = "true")
 @ConfigurationProperties("events.export.timescaledb")
-interface TimescaledbEventsConfiguration {
+internal interface TimescaledbEventsConfiguration {
 
     @get:Bindable(defaultValue = "INFO")
     @get:NotNull

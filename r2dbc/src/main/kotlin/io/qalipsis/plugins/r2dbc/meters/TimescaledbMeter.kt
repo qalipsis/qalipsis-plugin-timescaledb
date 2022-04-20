@@ -8,7 +8,7 @@ import java.time.Instant
  *
  * @author Palina Bril
  */
-data class TimescaledbMeter(
+internal data class TimescaledbMeter(
     val timestamp: Instant,
     val type: String,
     val count: BigDecimal? = null,

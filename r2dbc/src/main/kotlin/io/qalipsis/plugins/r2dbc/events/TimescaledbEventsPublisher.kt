@@ -109,7 +109,7 @@ internal class TimescaledbEventsPublisher(
                             .bindOrNull(bindIndex++, event.message)
                             .bindOrNull(bindIndex++, event.error)
                             .bindOrNull(bindIndex++, event.stackTrace)
-                            .bindOrNull(bindIndex++, event.date)
+                            .bindOrNull(bindIndex++, event.instant)
                             .bindOrNull(bindIndex++, event.boolean)
                             .bindOrNull(bindIndex++, event.number)
                             .bindOrNull(bindIndex, event.value)
