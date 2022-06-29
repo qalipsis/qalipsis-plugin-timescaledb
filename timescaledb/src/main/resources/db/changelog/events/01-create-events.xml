@@ -1,0 +1,71 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<databaseChangeLog
+  xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+  xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+  xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog
+         http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-4.4.xsd">
+  <changeSet id="01" author="Gabriel Moraes">
+    <createTable tableName="events">
+      <column name="name" type="text">
+        <constraints nullable="false"/>
+      </column>
+      <column name="timestamp" type="TIMESTAMP WITH TIME ZONE">
+        <constraints nullable="false"/>
+      </column>
+      <column name="level" type="varchar(20)">
+        <constraints nullable="false"/>
+      </column>
+      <column name="tags" type="jsonb">
+        <constraints nullable="true"/>
+      </column>
+      <column name="message" type="text">
+        <constraints nullable="true"/>
+      </column>
+      <column name="error" type="text">
+        <constraints nullable="true"/>
+      </column>
+      <column name="stack_trace" type="text">
+        <constraints nullable="true"/>
+      </column>
+      <column name="date" type="TIMESTAMP WITH TIME ZONE">
+        <constraints nullable="true"/>
+      </column>
+      <column name="boolean" type="boolean">
+        <constraints nullable="true"/>
+      </column>
+      <column name="number" type="decimal(20,6)">
+        <constraints nullable="true"/>
+      </column>
+      <column name="duration" type="bigint">
+        <constraints nullable="true"/>
+      </column>
+      <column name="geo_point" type="jsonb">
+        <constraints nullable="true"/>
+      </column>
+      <column name="value" type="jsonb">
+        <constraints nullable="true"/>
+      </column>
+    </createTable>
+
+    <createIndex tableName="events" indexName="unique_event_idx">
+      <column name="name"/>
+      <column name="timestamp"/>
+    </createIndex>
+
+    <sql>
+      CREATE INDEX events_tags_idx ON events USING GIN (tags);
+      CREATE INDEX events_tags_campaign_scenario_idx ON events USING GIN ((tags -> 'campaign'), (tags -> 'scenario'));
+    </sql>
+  </changeSet>
+
+  <changeSet id="02" author="Eric Jesse" failOnError="false">
+    <sql>
+      SELECT create_hypertable('events', 'timestamp',
+                               partitioning_column = > 'name',
+                               number_partitions = > 4,
+                               chunk_time_interval = > INTERVAL '1 day'
+               );
+    </sql>
+  </changeSet>
+</databaseChangeLog>

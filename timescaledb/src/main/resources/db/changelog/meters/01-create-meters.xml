@@ -1,0 +1,70 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<databaseChangeLog
+  xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+  xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+  xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog
+         http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-4.4.xsd">
+  <changeSet id="02" author="Palina Bril">
+    <createTable tableName="meters">
+      <column name="name" type="text">
+        <constraints nullable="false"/>
+      </column>
+      <column name="tags" type="jsonb">
+        <constraints nullable="true"/>
+      </column>
+      <column name="timestamp" type="TIMESTAMP WITH TIME ZONE">
+        <constraints nullable="false"/>
+      </column>
+      <column name="type" type="varchar(50)">
+        <constraints nullable="false"/>
+      </column>
+      <column name="count" type="decimal(6,3)">
+        <constraints nullable="true"/>
+      </column>
+      <column name="value" type="decimal(6,3)">
+        <constraints nullable="true"/>
+      </column>
+      <column name="sum" type="decimal(6,3)">
+        <constraints nullable="true"/>
+      </column>
+      <column name="mean" type="decimal(6,3)">
+        <constraints nullable="true"/>
+      </column>
+      <column name="active_tasks" type="int">
+        <constraints nullable="true"/>
+      </column>
+      <column name="duration" type="decimal(6,3)">
+        <constraints nullable="true"/>
+      </column>
+      <column name="max" type="decimal(6,3)">
+        <constraints nullable="true"/>
+      </column>
+      <column name="other" type="text">
+        <constraints nullable="true"/>
+      </column>
+    </createTable>
+
+    <createIndex tableName="meters" indexName="unique_meter_idx">
+      <column name="name"/>
+      <column name="tags"/>
+      <column name="type"/>
+      <column name="timestamp"/>
+    </createIndex>
+
+    <sql>
+      CREATE INDEX meters_tags_idx ON meters USING GIN (tags);
+      CREATE INDEX meters_tags_campaign_scenario_idx ON meters USING GIN ((tags -> 'campaign'), (tags -> 'scenario'));
+    </sql>
+  </changeSet>
+
+  <changeSet id="02" author="Eric Jesse" failOnError="false">
+    <sql>
+      SELECT create_hypertable('meters', 'timestamp',
+                               partitioning_column = > 'name',
+                               number_partitions = > 4,
+                               chunk_time_interval = > INTERVAL '1 day'
+               );
+    </sql>
+  </changeSet>
+</databaseChangeLog>
