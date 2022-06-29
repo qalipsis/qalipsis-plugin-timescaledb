@@ -1,6 +1,6 @@
-rootProject.name = "qalipsis-plugins-r2dbc"
+rootProject.name = "qalipsis-plugins-timescaledb"
 
 include(
-    "r2dbc"
+    "timescaledb"
 )
 

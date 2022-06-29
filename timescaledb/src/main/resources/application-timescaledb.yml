@@ -1,0 +1,25 @@
+events:
+  export:
+    timescaledb:
+      enabled: false
+      min-level: INFO
+      host: localhost
+      port: 5432
+      database: qalipsis
+      schema: events
+      linger-period: 10s
+      batch-size: 20000
+      publishers: 1
+      username: qalipsis_user
+      password: qalipsis-pwd
+
+meters:
+  timescaledb:
+    enabled: false
+    host: localhost
+    port: 5432
+    database: qalipsis
+    schema: meters
+    username: qalipsis_user
+    password: qalipsis-pwd
+    step: PT10S
