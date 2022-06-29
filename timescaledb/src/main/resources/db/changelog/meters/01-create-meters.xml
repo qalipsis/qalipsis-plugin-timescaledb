@@ -19,25 +19,37 @@
       <column name="type" type="varchar(50)">
         <constraints nullable="false"/>
       </column>
-      <column name="count" type="decimal(6,3)">
+      <column name="tenant" type="varchar(20)">
         <constraints nullable="true"/>
       </column>
-      <column name="value" type="decimal(6,3)">
+      <column name="campaign" type="varchar(20)">
         <constraints nullable="true"/>
       </column>
-      <column name="sum" type="decimal(6,3)">
+      <column name="scenario" type="varchar(20)">
         <constraints nullable="true"/>
       </column>
-      <column name="mean" type="decimal(6,3)">
+      <column name="count" type="decimal(18,6)">
+        <constraints nullable="true"/>
+      </column>
+      <column name="value" type="decimal(18,6)">
+        <constraints nullable="true"/>
+      </column>
+      <column name="sum" type="decimal(18,6)">
+        <constraints nullable="true"/>
+      </column>
+      <column name="mean" type="decimal(18,6)">
         <constraints nullable="true"/>
       </column>
       <column name="active_tasks" type="int">
         <constraints nullable="true"/>
       </column>
-      <column name="duration" type="decimal(6,3)">
+      <column name="duration" type="decimal(18,6)">
         <constraints nullable="true"/>
       </column>
-      <column name="max" type="decimal(6,3)">
+      <column name="unit" type="varchar(20)">
+        <constraints nullable="true"/>
+      </column>
+      <column name="max" type="decimal(18,6)">
         <constraints nullable="true"/>
       </column>
       <column name="other" type="text">
@@ -45,25 +57,31 @@
       </column>
     </createTable>
 
-    <createIndex tableName="meters" indexName="unique_meter_idx">
-      <column name="name"/>
-      <column name="tags"/>
-      <column name="type"/>
-      <column name="timestamp"/>
+    <createIndex tableName="meters" indexName="tenant_meter_idx">
+      <column name="tenant"/>
     </createIndex>
 
+    <createIndex tableName="meters" indexName="tenant_campaign_meter_idx">
+      <column name="tenant"/>
+      <column name="campaign"/>
+    </createIndex>
+
+    <createIndex tableName="meters" indexName="tenant_campaign_scenario_meter_idx">
+      <column name="tenant"/>
+      <column name="campaign"/>
+      <column name="scenario"/>
+    </createIndex>
     <sql>
       CREATE INDEX meters_tags_idx ON meters USING GIN (tags);
-      CREATE INDEX meters_tags_campaign_scenario_idx ON meters USING GIN ((tags -> 'tenant'), (tags -> 'campaign'), (tags -> 'scenario'));
     </sql>
   </changeSet>
 
   <changeSet id="02" author="Eric Jesse" failOnError="false">
     <sql>
       SELECT create_hypertable('meters', 'timestamp',
-                               partitioning_column = > 'name',
-                               number_partitions = > 4,
-                               chunk_time_interval = > INTERVAL '1 day'
+                               partitioning_column => 'name',
+                               number_partitions => 4,
+                               chunk_time_interval => INTERVAL '1 day'
                );
     </sql>
   </changeSet>

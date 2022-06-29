@@ -4,7 +4,7 @@ plugins {
     kotlin("plugin.allopen")
 }
 
-description = "Qalipsis Plugins - R2DBC with native Drivers"
+description = "Qalipsis Plugins - TimescaleDB"
 
 allOpen {
     annotations(
