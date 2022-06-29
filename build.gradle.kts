@@ -134,7 +134,7 @@ allprojects {
         val integrationTest = register<Test>("integrationTest") {
             this.group = "verification"
             ignoreFailures = System.getProperty("ignoreIntegrationTestFailures", "false").toBoolean()
-            include("**/*IntegrationTest.*", "**/*IntegrationTest$*")
+            include("**/*IntegrationTest*", "**/*IntegrationTest$*", "**/*IntegrationTest.**")
             exclude("**/*Scenario*.*")
         }
 
