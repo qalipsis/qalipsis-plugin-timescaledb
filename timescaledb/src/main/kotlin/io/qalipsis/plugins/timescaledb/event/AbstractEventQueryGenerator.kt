@@ -3,9 +3,11 @@ package io.qalipsis.plugins.timescaledb.event
 import io.qalipsis.api.report.DataField
 import io.qalipsis.api.report.DataFieldType
 import io.qalipsis.plugins.timescaledb.dataprovider.AbstractQueryGenerator
+import io.qalipsis.plugins.timescaledb.dataprovider.DataType
 import java.util.concurrent.TimeUnit
 
 internal abstract class AbstractEventQueryGenerator : AbstractQueryGenerator(
+    dataType = DataType.EVENT,
     databaseTable = "events",
     queryFields = FIELDS,
     numericFields = FIELDS.filter { it.type == DataFieldType.NUMBER }.map { it.name }.toSet(),

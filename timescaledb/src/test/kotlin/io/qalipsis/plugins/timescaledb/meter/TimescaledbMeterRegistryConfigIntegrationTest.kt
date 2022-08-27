@@ -64,7 +64,8 @@ internal class TimescaledbMeterRegistryConfigIntegrationTest {
         override fun getProperties(): Map<String, String> {
             return mapOf(
                 "meters.export.timescaledb.enabled" to StringUtils.TRUE,
-                "meters.export.timescaledb.autostart" to "false"
+                "meters.export.timescaledb.autostart" to "false",
+                "meters.export.timescaledb.autoconnect" to "false"
             )
         }
     }
@@ -104,7 +105,8 @@ internal class TimescaledbMeterRegistryConfigIntegrationTest {
                 "meters.export.timescaledb.username" to "the user",
                 "meters.export.timescaledb.password" to "the password",
                 "meters.export.timescaledb.schema" to "the schema",
-                "meters.export.timescaledb.autostart" to "false"
+                "meters.export.timescaledb.autostart" to "false",
+                "meters.export.timescaledb.autoconnect" to "false"
             )
         }
     }

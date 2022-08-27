@@ -41,8 +41,18 @@ abstract class TimescaledbMeterConfig : StepRegistryConfig {
         return PropertyValidator.getString(this, "schema").orElse("meters")
     }
 
+    /**
+     * For test purpose only.
+     */
     fun autostart(): Boolean {
         return PropertyValidator.getBoolean(this, "autostart").orElse(true)
+    }
+
+    /**
+     * For test purpose only.
+     */
+    fun autoconnect(): Boolean {
+        return PropertyValidator.getBoolean(this, "autoconnect").orElse(true)
     }
 
     /**

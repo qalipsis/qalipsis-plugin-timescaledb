@@ -1,14 +1,14 @@
 package io.qalipsis.plugins.timescaledb.meter
 
-import io.qalipsis.api.report.query.QueryAggregationOperator
-import io.qalipsis.api.report.query.QueryDescription
-import io.qalipsis.plugins.timescaledb.dataprovider.BoundParameters
+import io.qalipsis.api.query.QueryAggregationOperator
+import io.qalipsis.api.query.QueryDescription
+import io.qalipsis.plugins.timescaledb.dataprovider.SerializableBoundParameter
 
 internal class PostgresMeterQueryGenerator : AbstractMeterQueryGenerator() {
 
     override fun buildRootQueryForAggregation(
         query: QueryDescription,
-        boundParameters: MutableMap<String, BoundParameters>
+        boundParameters: Map<String, SerializableBoundParameter>
     ): StringBuilder {
         // We create a time-bucket series to aggregate into them: https://www.postgresql.org/docs/current/functions-srf.html
         val startIdentifier = boundParameters[":start"]!!.identifiers.first()
@@ -30,7 +30,7 @@ internal class PostgresMeterQueryGenerator : AbstractMeterQueryGenerator() {
             QueryAggregationOperator.PERCENTILE_99 -> "percentile_disc(0.99) WITHIN GROUP (ORDER BY meters.${query.fieldName})"
             QueryAggregationOperator.PERCENTILE_99_9 -> "percentile_disc(0.999) WITHIN GROUP (ORDER BY meters.${query.fieldName})"
         }
-        sql.append("$aggregation AS result")
+        sql.append("$aggregation AS result, meters.campaign AS campaign")
         sql.append(""" FROM meters RIGHT JOIN buckets ON meters.timestamp BETWEEN buckets.start AND buckets.end""")
 
         return sql

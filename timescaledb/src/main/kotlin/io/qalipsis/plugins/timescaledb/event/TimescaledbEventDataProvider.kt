@@ -4,7 +4,7 @@ import com.fasterxml.jackson.databind.ObjectMapper
 import io.micronaut.context.annotation.Requirements
 import io.micronaut.context.annotation.Requires
 import io.micronaut.validation.Validated
-import io.qalipsis.api.report.EventProvider
+import io.qalipsis.api.report.EventMetadataProvider
 import io.qalipsis.plugins.timescaledb.dataprovider.AbstractDataProvider
 import io.r2dbc.pool.ConnectionPool
 import jakarta.inject.Named
@@ -30,4 +30,4 @@ internal class TimescaledbEventDataProvider(
     databaseTable = "events",
     queryGenerator = eventQueryGenerator,
     objectMapper = objectMapper
-), EventProvider
+), EventMetadataProvider

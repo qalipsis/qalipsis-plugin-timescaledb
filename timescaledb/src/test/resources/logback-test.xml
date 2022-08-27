@@ -18,10 +18,16 @@
   <logger level="DEBUG" name="io.qalipsis.plugins.timescaledb" additivity="false">
     <appender-ref ref="console"/>
   </logger>
-  <logger level="TRACE" name="io.qalipsis.plugins.timescaledb.meter.TimescaledbMeterRegistry" additivity="false">
+  <!--<logger level="TRACE" name="io.qalipsis.plugins.timescaledb.meter.TimescaledbMeterRegistry" additivity="false">
     <appender-ref ref="console"/>
   </logger>
-  <!--<logger level="DEBUG" name="io.r2dbc.postgresql" additivity="false">
+  <logger level="TRACE" name="io.qalipsis.plugins.timescaledb.dataprovider.AggregationExecutor" additivity="false">
+    <appender-ref ref="console"/>
+  </logger>
+  <logger level="TRACE" name="io.qalipsis.plugins.timescaledb.dataprovider.AbstractQueryExecutor" additivity="false">
+    <appender-ref ref="console"/>
+  </logger>
+  <logger level="DEBUG" name="io.r2dbc.postgresql" additivity="false">
     <appender-ref ref="console"/>
   </logger>
   <logger level="TRACE" name="io.micronaut.context.condition" additivity="false">

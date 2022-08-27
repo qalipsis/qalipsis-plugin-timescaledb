@@ -6,14 +6,14 @@ import assertk.assertions.hasSize
 import assertk.assertions.index
 import assertk.assertions.isBetween
 import assertk.assertions.isEqualTo
+import assertk.assertions.isNotNull
 import assertk.assertions.prop
-import io.qalipsis.api.report.query.QueryAggregationOperator
-import io.qalipsis.api.report.query.QueryClause
-import io.qalipsis.api.report.query.QueryClauseOperator
-import io.qalipsis.api.report.query.QueryDescription
+import io.qalipsis.api.query.QueryAggregationOperator
+import io.qalipsis.api.query.QueryClause
+import io.qalipsis.api.query.QueryClauseOperator
+import io.qalipsis.api.query.QueryDescription
+import io.qalipsis.api.report.TimeSeriesAggregationResult
 import io.qalipsis.plugins.timescaledb.TimescaleDbContainerProvider
-import io.qalipsis.plugins.timescaledb.dataprovider.PreparedQuery
-import kotlinx.coroutines.delay
 import org.junit.jupiter.api.Nested
 import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.condition.DisabledIfSystemProperty
@@ -22,7 +22,6 @@ import org.testcontainers.containers.wait.strategy.Wait
 import org.testcontainers.junit.jupiter.Container
 import org.testcontainers.utility.DockerImageName
 import java.time.Duration
-import java.time.Instant
 import kotlin.math.pow
 
 @DisabledIfSystemProperty(
@@ -55,43 +54,22 @@ internal class TimescaledbMeterQueryGeneratorIntegrationTest : AbstractMeterQuer
             assertThat(result).all {
                 hasSize(3)
                 index(0).all {
-                    prop(AggregationPoint::bucket).isEqualTo(start)
-                    prop(AggregationPoint::result).isBetween(7.92, 7.93)
+                    prop(TimeSeriesAggregationResult::start).isEqualTo(start)
+                    prop(TimeSeriesAggregationResult::value).isNotNull().transform { it.toDouble() }
+                        .isBetween(7.92, 7.93)
                 }
                 index(1).all {
-                    prop(AggregationPoint::bucket).isEqualTo(start + Duration.ofSeconds(2))
-                    prop(AggregationPoint::result).isBetween(55.15, 55.16)
+                    prop(TimeSeriesAggregationResult::start).isEqualTo(start + Duration.ofSeconds(2))
+                    prop(TimeSeriesAggregationResult::value).isNotNull().transform { it.toDouble() }
+                        .isBetween(55.15, 55.16)
                 }
                 index(2).all {
-                    prop(AggregationPoint::bucket).isEqualTo(start + Duration.ofSeconds(4))
-                    prop(AggregationPoint::result).isBetween(232.78, 232.79)
+                    prop(TimeSeriesAggregationResult::start).isEqualTo(start + Duration.ofSeconds(4))
+                    prop(TimeSeriesAggregationResult::value).isNotNull().transform { it.toDouble() }
+                        .isBetween(232.78, 232.79)
                 }
             }
         }
-    }
-
-    override suspend fun executeSelect(
-        query: PreparedQuery,
-        start: Instant,
-        end: Instant,
-        timeframe: Duration?,
-        limit: Int?,
-        order: String?
-    ): List<Map<String, Any?>> {
-        // A delay seems necessary for indexation.
-        delay(500)
-        return super.executeSelect(query, start, end, timeframe, limit, order)
-    }
-
-    override suspend fun executeAggregation(
-        query: PreparedQuery,
-        start: Instant,
-        end: Instant,
-        timeframe: Duration?
-    ): List<AggregationPoint> {
-        // A delay seems necessary for indexation.
-        delay(500)
-        return super.executeAggregation(query, start, end, timeframe)
     }
 
     companion object {

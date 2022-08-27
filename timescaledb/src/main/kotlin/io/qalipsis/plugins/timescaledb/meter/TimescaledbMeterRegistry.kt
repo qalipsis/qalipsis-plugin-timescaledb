@@ -25,12 +25,12 @@ internal class TimescaledbMeterRegistry(
 
     private lateinit var datasource: HikariDataSource
 
-    private lateinit var sqlInsertStatement: String
+    private val sqlInsertStatement = String.format(SQL, "${config.schema()}.meters")
 
     private var schemaInitialized = false
 
     init {
-        if (config.autostart()) {
+        if (config.autostart() || config.autoconnect()) {
             createOrUpdateSchemaIfRequired()
 
             val poolConfig = HikariConfig()
@@ -46,8 +46,9 @@ internal class TimescaledbMeterRegistry(
             poolConfig.maximumPoolSize = 1
 
             datasource = HikariDataSource(poolConfig)
-            sqlInsertStatement = String.format(SQL, "${config.schema()}.meters")
+        }
 
+        if (config.autostart()) {
             super.start(DEFAULT_THREAD_FACTORY)
         }
     }
@@ -88,7 +89,7 @@ internal class TimescaledbMeterRegistry(
 
     @KTestable
     private fun doPublish(timescaledbMeters: List<TimescaledbMeter>) {
-        if (log.isTraceEnabled()) {
+        if (log.isTraceEnabled) {
             log.debug {
                 "Meters to publish: ${
                     timescaledbMeters.joinToString(

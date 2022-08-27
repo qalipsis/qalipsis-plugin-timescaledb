@@ -3,8 +3,10 @@ package io.qalipsis.plugins.timescaledb.meter
 import io.qalipsis.api.report.DataField
 import io.qalipsis.api.report.DataFieldType
 import io.qalipsis.plugins.timescaledb.dataprovider.AbstractQueryGenerator
+import io.qalipsis.plugins.timescaledb.dataprovider.DataType
 
 internal abstract class AbstractMeterQueryGenerator : AbstractQueryGenerator(
+    dataType = DataType.METER,
     databaseTable = "meters",
     queryFields = FIELDS,
     numericFields = FIELDS.filter { it.type == DataFieldType.NUMBER }.map { it.name }.toSet(),
