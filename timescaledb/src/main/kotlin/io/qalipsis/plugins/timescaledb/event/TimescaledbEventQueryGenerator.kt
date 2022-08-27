@@ -1,14 +1,14 @@
 package io.qalipsis.plugins.timescaledb.event
 
-import io.qalipsis.api.report.query.QueryAggregationOperator
-import io.qalipsis.api.report.query.QueryDescription
-import io.qalipsis.plugins.timescaledb.dataprovider.BoundParameters
+import io.qalipsis.api.query.QueryAggregationOperator
+import io.qalipsis.api.query.QueryDescription
+import io.qalipsis.plugins.timescaledb.dataprovider.SerializableBoundParameter
 
 internal class TimescaledbEventQueryGenerator : AbstractEventQueryGenerator() {
 
     override fun buildRootQueryForAggregation(
         query: QueryDescription,
-        boundParameters: MutableMap<String, BoundParameters>
+        boundParameters: Map<String, SerializableBoundParameter>
     ): StringBuilder {
         // We create a time-bucket series to aggregate into them: https://www.postgresql.org/docs/current/functions-srf.html
         // The interval value cannot be bound and must be replaced as a string.
@@ -28,7 +28,7 @@ internal class TimescaledbEventQueryGenerator : AbstractEventQueryGenerator() {
             QueryAggregationOperator.PERCENTILE_99 -> """ public.approx_percentile(0.99, public.tdigest(100, events.${query.fieldName})) """
             QueryAggregationOperator.PERCENTILE_99_9 -> """ public.approx_percentile(0.999, public.tdigest(100, events.${query.fieldName})) """
         }
-        sql.append(" $aggregation AS result")
+        sql.append(" $aggregation AS result, events.campaign AS campaign")
         sql.append(""" FROM events""")
         return sql
     }

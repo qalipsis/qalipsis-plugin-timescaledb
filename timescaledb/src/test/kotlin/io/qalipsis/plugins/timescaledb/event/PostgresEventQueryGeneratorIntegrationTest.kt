@@ -5,11 +5,13 @@ import assertk.assertThat
 import assertk.assertions.hasSize
 import assertk.assertions.index
 import assertk.assertions.isEqualTo
+import assertk.assertions.isNotNull
 import assertk.assertions.prop
-import io.qalipsis.api.report.query.QueryAggregationOperator
-import io.qalipsis.api.report.query.QueryClause
-import io.qalipsis.api.report.query.QueryClauseOperator
-import io.qalipsis.api.report.query.QueryDescription
+import io.qalipsis.api.query.QueryAggregationOperator
+import io.qalipsis.api.query.QueryClause
+import io.qalipsis.api.query.QueryClauseOperator
+import io.qalipsis.api.query.QueryDescription
+import io.qalipsis.api.report.TimeSeriesAggregationResult
 import org.junit.jupiter.api.Nested
 import org.junit.jupiter.api.Test
 import org.testcontainers.containers.JdbcDatabaseContainer
@@ -44,16 +46,16 @@ internal class PostgresEventQueryGeneratorIntegrationTest : AbstractEventQueryGe
             assertThat(result).all {
                 hasSize(3)
                 index(0).all {
-                    prop(AggregationPoint::bucket).isEqualTo(start)
-                    prop(AggregationPoint::result).isEqualTo(5.0)
+                    prop(TimeSeriesAggregationResult::start).isEqualTo(start)
+                    prop(TimeSeriesAggregationResult::value).isNotNull().transform { it.toDouble() }.isEqualTo(5.0)
                 }
                 index(1).all {
-                    prop(AggregationPoint::bucket).isEqualTo(start + Duration.ofSeconds(2))
-                    prop(AggregationPoint::result).isEqualTo(34.0)
+                    prop(TimeSeriesAggregationResult::start).isEqualTo(start + Duration.ofSeconds(2))
+                    prop(TimeSeriesAggregationResult::value).isNotNull().transform { it.toDouble() }.isEqualTo(34.0)
                 }
                 index(2).all {
-                    prop(AggregationPoint::bucket).isEqualTo(start + Duration.ofSeconds(4))
-                    prop(AggregationPoint::result).isEqualTo(233.0)
+                    prop(TimeSeriesAggregationResult::start).isEqualTo(start + Duration.ofSeconds(4))
+                    prop(TimeSeriesAggregationResult::value).isNotNull().transform { it.toDouble() }.isEqualTo(233.0)
                 }
             }
         }

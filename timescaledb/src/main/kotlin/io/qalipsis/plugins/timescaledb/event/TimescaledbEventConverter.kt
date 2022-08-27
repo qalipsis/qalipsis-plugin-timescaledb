@@ -1,6 +1,7 @@
 package io.qalipsis.plugins.timescaledb.event
 
 import com.fasterxml.jackson.databind.ObjectMapper
+import io.aerisconsulting.catadioptre.KTestable
 import io.micrometer.core.instrument.util.StringEscapeUtils
 import io.qalipsis.api.events.Event
 import io.qalipsis.api.events.EventConverter
@@ -102,6 +103,11 @@ internal class TimescaledbEventConverter(
             is Throwable -> {
                 timescaledbEvent.copy(error = value.message, stackTrace = stackTraceToString(value))
             }
+            is Iterable<*> -> {
+                var event = timescaledbEvent
+                value.filterNotNull().forEach { event = addValue(it, event) }
+                event
+            }
             else -> {
                 timescaledbEvent.copy(value = objectMapper.writeValueAsString(value))
             }
@@ -111,6 +117,7 @@ internal class TimescaledbEventConverter(
     /**
      * Converts the stack trace of a [Throwable] into a [String].
      */
+    @KTestable
     private fun stackTraceToString(throwable: Throwable): String {
         try {
             StringWriter().use { sw ->

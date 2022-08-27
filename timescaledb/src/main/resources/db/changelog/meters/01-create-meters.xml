@@ -34,10 +34,10 @@
       <column name="value" type="decimal(18,6)">
         <constraints nullable="true"/>
       </column>
-      <column name="sum" type="decimal(18,6)">
+      <column name="sum" type="decimal(24,6)">
         <constraints nullable="true"/>
       </column>
-      <column name="mean" type="decimal(18,6)">
+      <column name="mean" type="decimal(24,6)">
         <constraints nullable="true"/>
       </column>
       <column name="active_tasks" type="int">
@@ -49,7 +49,7 @@
       <column name="unit" type="varchar(20)">
         <constraints nullable="true"/>
       </column>
-      <column name="max" type="decimal(18,6)">
+      <column name="max" type="decimal(24,6)">
         <constraints nullable="true"/>
       </column>
       <column name="other" type="text">

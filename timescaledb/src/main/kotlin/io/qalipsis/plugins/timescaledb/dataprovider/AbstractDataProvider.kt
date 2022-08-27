@@ -2,8 +2,8 @@ package io.qalipsis.plugins.timescaledb.dataprovider
 
 import com.fasterxml.jackson.databind.ObjectMapper
 import io.micronaut.validation.Validated
+import io.qalipsis.api.query.QueryDescription
 import io.qalipsis.api.report.DataField
-import io.qalipsis.api.report.query.QueryDescription
 import io.r2dbc.pool.ConnectionPool
 import io.r2dbc.spi.Connection
 import kotlinx.coroutines.flow.toList

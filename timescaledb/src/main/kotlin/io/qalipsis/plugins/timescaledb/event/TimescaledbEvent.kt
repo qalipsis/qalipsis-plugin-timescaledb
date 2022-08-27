@@ -8,7 +8,7 @@ import java.sql.Timestamp
  *
  * @author Gabriel Moraes
  */
-data class TimescaledbEvent(
+internal data class TimescaledbEvent(
     val id: Long? = null,
     val timestamp: Timestamp,
     val level: String,
@@ -21,7 +21,7 @@ data class TimescaledbEvent(
     val stackTrace: String? = null,
     val error: String? = null,
     val date: Timestamp? = null,
-    val boolean: Boolean = false,
+    val boolean: Boolean? = null,
     val number: BigDecimal? = null,
     val durationNano: BigDecimal? = null,
     val geoPoint: String? = null,

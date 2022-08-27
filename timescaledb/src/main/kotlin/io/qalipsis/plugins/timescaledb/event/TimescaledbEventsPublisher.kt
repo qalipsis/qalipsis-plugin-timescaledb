@@ -102,8 +102,11 @@ internal class TimescaledbEventsPublisher(
     @KTestable
     private fun doPerformPublish(values: List<Event>) {
         log.debug { "Sending ${values.size} events to Timescaledb" }
-        val timescaledbEvents = values.map { eventsConverter.convert(it) }
+        publishConvertedEvents(values.map { eventsConverter.convert(it) })
+    }
 
+    @KTestable
+    private fun publishConvertedEvents(timescaledbEvents: List<TimescaledbEvent>) {
         try {
             log.debug { "${timescaledbEvents.size} events to be published" }
             log.trace { "Saved events: ${timescaledbEvents.joinToString("\n\t", prefix = "\n\t") { it.toString() }}" }

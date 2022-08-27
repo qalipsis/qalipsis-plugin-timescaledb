@@ -178,7 +178,7 @@ internal class TimescaledbMeterConverter {
         baseTimeUnit: TimeUnit
     ): TimescaledbMeter {
         return timescaledbMeter.copy(
-            count = BigDecimal(timer.count().toDouble()),
+            count = BigDecimal(timer.count()),
             sum = BigDecimal(timer.totalTime(baseTimeUnit)),
             mean = BigDecimal(timer.mean(baseTimeUnit)),
             max = BigDecimal(timer.max(baseTimeUnit)),
@@ -192,7 +192,7 @@ internal class TimescaledbMeterConverter {
     private fun convertSummary(summary: DistributionSummary, timescaledbMeter: TimescaledbMeter): TimescaledbMeter {
         val histogramSnapshot = summary.takeSnapshot()
         return timescaledbMeter.copy(
-            count = BigDecimal(histogramSnapshot.count().toDouble()),
+            count = BigDecimal(histogramSnapshot.count()),
             sum = BigDecimal(histogramSnapshot.total()),
             mean = BigDecimal(histogramSnapshot.mean()),
             max = BigDecimal(histogramSnapshot.max())
@@ -218,11 +218,10 @@ internal class TimescaledbMeterConverter {
         return if (names.isEmpty()) {
             timescaledbMeter
         } else {
-            val otherForSave = StringBuilder("")
-            for (i in names.indices) {
-                otherForSave.append(names[i]).append(":").append(values[i]).append(", ")
+            val otherMeasurements = names.indices.joinToString(",", prefix = "{", postfix = "}") { index ->
+                """"${names[index]}":"${values[index]}""""
             }
-            timescaledbMeter.copy(other = otherForSave.toString())
+            timescaledbMeter.copy(other = otherMeasurements)
         }
     }
 

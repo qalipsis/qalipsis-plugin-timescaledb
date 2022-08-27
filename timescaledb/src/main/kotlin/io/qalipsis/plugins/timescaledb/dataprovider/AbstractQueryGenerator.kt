@@ -1,12 +1,14 @@
 package io.qalipsis.plugins.timescaledb.dataprovider
 
 import io.qalipsis.api.logging.LoggerHelper.logger
+import io.qalipsis.api.query.QueryAggregationOperator
+import io.qalipsis.api.query.QueryClause
+import io.qalipsis.api.query.QueryClauseOperator
+import io.qalipsis.api.query.QueryDescription
 import io.qalipsis.api.report.DataField
-import io.qalipsis.api.report.query.QueryAggregationOperator
-import io.qalipsis.api.report.query.QueryClauseOperator
-import io.qalipsis.api.report.query.QueryDescription
 
 internal abstract class AbstractQueryGenerator(
+    private val dataType: DataType,
     private val databaseTable: String,
     val queryFields: List<DataField>,
     private val numericFields: Set<String>,
@@ -19,89 +21,74 @@ internal abstract class AbstractQueryGenerator(
     /**
      * Prepares the queries to fetch both aggregation and data according to the query description.
      */
-    fun prepareQueries(tenant: String, query: QueryDescription): PreparedQuery {
+    fun prepareQueries(tenant: String, query: QueryDescription): PreparedQueries {
         log.debug { "Creating queries for the tenant $tenant and $query" }
-        val (aggregationSql, aggregationBoundParameters) = prepareAggregationQuery(query, tenant)
-        val (retrievalSql, retrievalBoundParameters) = prepareRetrievalQuery(query, tenant)
-
-        return PreparedQuery(
-            aggregationStatement = aggregationSql,
-            aggregationBoundParameters = aggregationBoundParameters,
-            retrievalStatement = retrievalSql,
-            retrievalBoundParameters = retrievalBoundParameters
-        ).also {
-            log.debug { "Created queries: $it" }
-        }
+        val prepareQueries = PreparedQueries(dataType)
+        prepareAggregationQuery(tenant, query, prepareQueries)
+        prepareCountAndRetrievalQuery(tenant, query, prepareQueries)
+        log.debug { "Created queries: $prepareQueries" }
+        return prepareQueries
     }
 
     /**
      * Prepares the query to aggregate the data in time-buckets.
      */
-    private fun prepareAggregationQuery(
-        query: QueryDescription,
-        tenant: String
-    ): Pair<String, MutableMap<String, BoundParameters>> {
+    private fun prepareAggregationQuery(tenant: String, query: QueryDescription, preparedQueries: PreparedQueries) {
         if (query.aggregationOperation != QueryAggregationOperator.COUNT) {
             require(query.fieldName in numericFields) { "The field ${query.fieldName} is not numeric and cannot be aggregated" }
         }
-        val boundParameters = mutableMapOf<String, BoundParameters>()
-        // The interval value cannot be bound and must be replaced as a string.
-        boundParameters[":timeframe"] =
-            BoundParameters(
-                value = "${query.timeframeUnit?.toMillis() ?: 10_000}",
-                BoundParameters.Type.NUMBER,
-                "%timeframe%"
-            )
-        boundParameters[":start"] = BoundParameters(value = null, BoundParameters.Type.STRING, "$1")
-        boundParameters[":end"] = BoundParameters(value = null, BoundParameters.Type.STRING, "$2")
-        boundParameters["tenant"] = BoundParameters(value = tenant, BoundParameters.Type.STRING, "$3")
+        addDefaultParametersForAggregationStatement(tenant, query.timeframeUnit?.toMillis(), preparedQueries)
 
-        val sql = buildRootQueryForAggregation(query, boundParameters)
+        val sql = buildRootQueryForAggregation(query, preparedQueries.aggregationBoundParameters)
         sql.append(" WHERE ${databaseTable}.timestamp BETWEEN $1::timestamp AND $2::timestamp AND ${databaseTable}.tenant = $3")
 
-        if (query.aggregationOperation == QueryAggregationOperator.COUNT && query.fieldName != null) {
+        if (query.fieldName != null) {
             // If count aggregation and field name are set, select only the records where the field is not null.
             sql.append(""" AND ${databaseTable}.${query.fieldName} IS NOT NULL""")
         }
-        sql.append(" %s") // Placeholder for additional filters (specific campaigns or scenarios)
-        query.filters.forEach { clause ->
-            if (clause.name == "name" || clause.name in queryFieldsByName.keys) {
-                sql.append(""" AND ${databaseTable}.${clause.name}""")
-                sql.append(
-                    """ ${
-                        convertComparator(
-                            clause.name,
-                            clause.operator,
-                            clause.value,
-                            boundParameters,
-                            boundParameters.size
-                        )
-                    }"""
-                )
-            } else {
-                sql.append(""" AND ${databaseTable}.tags->>'${clause.name}'""")
-                sql.append(
-                    """ ${
-                        convertComparator(
-                            null,
-                            clause.operator,
-                            clause.value,
-                            boundParameters,
-                            boundParameters.size
-                        )
-                    }"""
-                )
-            }
-        }
+        addClauses(
+            queryClauses = query.filters,
+            sql = sql,
+            boundParametersCollector = preparedQueries::bindAggregationParameter,
+            nextIdentifierIndexSupplier = preparedQueries::nextAvailableAggregationParameterIdentifierIndex
+        )
 
         appendGroupingForAggregation(sql)
         appendOrderingForAggregation(sql)
-        return sql.toString() to boundParameters
+
+        preparedQueries.aggregationStatement = sql.toString()
+    }
+
+    private fun addDefaultParametersForAggregationStatement(
+        tenant: String,
+        timeframeMillis: Long?,
+        preparedQueries: PreparedQueries
+    ) {
+        // The interval value cannot be bound and must be replaced as a string.
+        preparedQueries.bindAggregationParameter(
+            ":timeframe", SerializableBoundParameter(
+                serializedValue = "${timeframeMillis ?: 10_000}",
+                SerializableBoundParameter.Type.NUMBER,
+                "%timeframe%"
+            )
+        )
+        preparedQueries.bindAggregationParameter(
+            ":start",
+            SerializableBoundParameter(serializedValue = null, SerializableBoundParameter.Type.STRING, "$1")
+        )
+        preparedQueries.bindAggregationParameter(
+            ":end",
+            SerializableBoundParameter(serializedValue = null, SerializableBoundParameter.Type.STRING, "$2")
+        )
+        preparedQueries.bindAggregationParameter(
+            "tenant",
+            SerializableBoundParameter(serializedValue = tenant, SerializableBoundParameter.Type.STRING, "$3")
+        )
     }
 
     abstract fun buildRootQueryForAggregation(
         query: QueryDescription,
-        boundParameters: MutableMap<String, BoundParameters>
+        boundParameters: Map<String, SerializableBoundParameter>
     ): StringBuilder
 
     abstract fun appendGroupingForAggregation(sql: StringBuilder)
@@ -109,30 +96,68 @@ internal abstract class AbstractQueryGenerator(
     abstract fun appendOrderingForAggregation(sql: StringBuilder)
 
     /**
-     * Prepares the query to retrieve the data in time-buckets.
+     * Prepares the statements to count and to retrieve the data in time-buckets.
      */
-    private fun prepareRetrievalQuery(
+    private fun prepareCountAndRetrievalQuery(
+        tenant: String,
         query: QueryDescription,
-        tenant: String
-    ): Pair<String, MutableMap<String, BoundParameters>> {
-        val boundParameters = mutableMapOf<String, BoundParameters>()
-
-        boundParameters[":limit"] = BoundParameters(value = "100", BoundParameters.Type.NUMBER, "%limit%")
-        boundParameters[":order"] = BoundParameters(value = "DESC", BoundParameters.Type.STRING, "%order%")
-        boundParameters[":start"] = BoundParameters(value = null, BoundParameters.Type.STRING, "$1")
-        boundParameters[":end"] = BoundParameters(value = null, BoundParameters.Type.STRING, "$2")
-        boundParameters["tenant"] = BoundParameters(value = tenant, BoundParameters.Type.STRING, "$3")
-
-        val sql = StringBuilder("""SELECT * FROM ${databaseTable}""")
-        sql.append(" WHERE ${databaseTable}.timestamp BETWEEN $1::timestamp AND $2::timestamp AND ${databaseTable}.tenant = $3")
+        preparedQueries: PreparedQueries
+    ) {
+        addDefaultParametersForCountAndRetrievalStatement(tenant, preparedQueries)
+        val sql = StringBuilder("")
+        sql.append(" FROM $databaseTable WHERE ${databaseTable}.timestamp BETWEEN $1::timestamp AND $2::timestamp AND ${databaseTable}.tenant = $3")
 
         if (query.fieldName != null) {
             // If count aggregation and field name are set, select only the records where the field is not null.
             sql.append(""" AND ${databaseTable}.${query.fieldName} IS NOT NULL""")
         }
 
+        addClauses(
+            queryClauses = query.filters,
+            sql = sql,
+            boundParametersCollector = preparedQueries::bindCountAndRetrievalParameter,
+            nextIdentifierIndexSupplier = preparedQueries::nextAvailableRetrievalParameterIdentifierIndex
+        )
+        preparedQueries.countStatement = "SELECT COUNT(*) $sql"
+        preparedQueries.retrievalStatement =
+            "SELECT * $sql ORDER BY ${databaseTable}.timestamp %order% LIMIT %limit% OFFSET %offset%"
+    }
+
+    private fun addDefaultParametersForCountAndRetrievalStatement(tenant: String, preparedQueries: PreparedQueries) {
+        preparedQueries.bindCountAndRetrievalParameter(
+            ":limit",
+            SerializableBoundParameter(serializedValue = "100", SerializableBoundParameter.Type.NUMBER, "%limit%")
+        )
+        preparedQueries.bindCountAndRetrievalParameter(
+            ":offset",
+            SerializableBoundParameter(serializedValue = "0", SerializableBoundParameter.Type.NUMBER, "%offset%")
+        )
+        preparedQueries.bindCountAndRetrievalParameter(
+            ":order",
+            SerializableBoundParameter(serializedValue = "DESC", SerializableBoundParameter.Type.STRING, "%order%")
+        )
+        preparedQueries.bindCountAndRetrievalParameter(
+            ":start",
+            SerializableBoundParameter(serializedValue = null, SerializableBoundParameter.Type.STRING, "$1")
+        )
+        preparedQueries.bindCountAndRetrievalParameter(
+            ":end",
+            SerializableBoundParameter(serializedValue = null, SerializableBoundParameter.Type.STRING, "$2")
+        )
+        preparedQueries.bindCountAndRetrievalParameter(
+            "tenant",
+            SerializableBoundParameter(serializedValue = tenant, SerializableBoundParameter.Type.STRING, "$3")
+        )
+    }
+
+    private fun addClauses(
+        queryClauses: Collection<QueryClause>,
+        sql: StringBuilder,
+        boundParametersCollector: (key: String, SerializableBoundParameter) -> Unit,
+        nextIdentifierIndexSupplier: () -> Int
+    ) {
         sql.append(" %s") // Placeholder for additional filters (specific campaigns or scenarios)
-        query.filters.forEach { clause ->
+        queryClauses.forEach { clause ->
             if (clause.name == "name" || clause.name in queryFieldsByName.keys) {
                 sql.append(""" AND ${databaseTable}.${clause.name}""")
                 sql.append(
@@ -141,8 +166,8 @@ internal abstract class AbstractQueryGenerator(
                             clause.name,
                             clause.operator,
                             clause.value,
-                            boundParameters,
-                            boundParameters.size - 1
+                            boundParametersCollector,
+                            nextIdentifierIndexSupplier()
                         )
                     }"""
                 )
@@ -154,27 +179,23 @@ internal abstract class AbstractQueryGenerator(
                             null,
                             clause.operator,
                             clause.value,
-                            boundParameters,
-                            boundParameters.size - 1
+                            boundParametersCollector,
+                            nextIdentifierIndexSupplier()
                         )
                     }"""
                 )
             }
         }
-
-        sql.append(" ORDER BY ${databaseTable}.timestamp %order%")
-        sql.append(" LIMIT %limit%")
-        return sql.toString() to boundParameters
     }
 
     private fun convertComparator(
         fieldName: String?,
         operator: QueryClauseOperator,
         value: String,
-        boundParameters: MutableMap<String, BoundParameters>,
-        identifierIndex: Int
+        boundParametersCollector: (key: String, SerializableBoundParameter) -> Unit,
+        nextIdentifierIndex: Int
     ): String {
-        val bindingParam = "$${identifierIndex}"
+        val bindingParam = "$${nextIdentifierIndex}"
         var paramType = resolveParameterType(fieldName, value)
 
         val criteria = when (operator) {
@@ -205,7 +226,7 @@ internal abstract class AbstractQueryGenerator(
         }
 
         // Set the convenient parameter in the binding list.
-        boundParameters[bindingParam] = BoundParameters(value, paramType, bindingParam)
+        boundParametersCollector(bindingParam, SerializableBoundParameter(value, paramType, bindingParam))
 
         return criteria
     }
@@ -219,23 +240,23 @@ internal abstract class AbstractQueryGenerator(
     private fun resolveParameterType(
         fieldName: String?,
         value: String
-    ): BoundParameters.Type {
+    ): SerializableBoundParameter.Type {
         return when (fieldName) {
             in booleanFields -> {
-                BoundParameters.Type.BOOLEAN
+                SerializableBoundParameter.Type.BOOLEAN
             }
             in numericFields -> {
                 if (value.contains(',')) {
-                    BoundParameters.Type.NUMBER_ARRAY
+                    SerializableBoundParameter.Type.NUMBER_ARRAY
                 } else {
-                    BoundParameters.Type.NUMBER
+                    SerializableBoundParameter.Type.NUMBER
                 }
             }
             else -> {
                 if (value.contains(',')) {
-                    BoundParameters.Type.STRING_ARRAY
+                    SerializableBoundParameter.Type.STRING_ARRAY
                 } else {
-                    BoundParameters.Type.STRING
+                    SerializableBoundParameter.Type.STRING
                 }
             }
         }
