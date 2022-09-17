@@ -1,10 +1,26 @@
+/*
+ * Copyright 2022 AERIS IT Solutions GmbH
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ * http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express
+ * or implied. See the License for the specific language governing
+ * permissions and limitations under the License.
+ */
+
 plugins {
     kotlin("jvm")
     kotlin("kapt")
     kotlin("plugin.allopen")
 }
 
-description = "Qalipsis Plugins - TimescaleDB"
+description = "QALIPSIS plugin for TimescaleDB"
 
 allOpen {
     annotations(
@@ -18,74 +34,63 @@ allOpen {
     )
 }
 
-val micronautVersion: String by project
-val kotlinCoroutinesVersion: String by project
-val testContainersVersion: String by project
-val r2dbcVersion: String by project
-
-val postgresqlDriverVersion = "42.4.0"
-val nettyVersion = "4.1.74.Final"
-
-val catadioptreVersion: String by project
-
 kotlin.sourceSets["test"].kotlin.srcDir("build/generated/source/kaptKotlin/catadioptre")
 kapt.useBuildCache = false
 
+val r2dbcVersion="0.8.13.RELEASE"
+val coreVersion: String by project
+
 dependencies {
-    compileOnly("io.aeris-consulting:catadioptre-annotations:${catadioptreVersion}")
-    compileOnly(kotlin("stdlib"))
+    implementation(platform("io.qalipsis:plugin-platform:${coreVersion}"))
+    compileOnly("io.aeris-consulting:catadioptre-annotations")
     compileOnly("io.micronaut:micronaut-runtime")
-    compileOnly("org.jetbrains.kotlinx:kotlinx-coroutines-core:$kotlinCoroutinesVersion")
 
-    api("io.qalipsis:api-common:${project.version}")
-    api("io.qalipsis:api-dsl:${project.version}")
+    api("io.qalipsis:api-common")
+    api("io.qalipsis:api-dsl")
 
-
-    implementation(platform("io.micronaut:micronaut-bom:$micronautVersion"))
-    implementation("org.liquibase:liquibase-core:4.+")
+    implementation("org.liquibase:liquibase-core")
     implementation("io.micronaut.sql:micronaut-jdbc-hikari")
     implementation("io.micronaut.micrometer:micronaut-micrometer-core")
-    implementation("org.jetbrains.kotlinx:kotlinx-coroutines-reactor:$kotlinCoroutinesVersion")
+    implementation("org.jetbrains.kotlinx:kotlinx-coroutines-reactor")
     implementation("io.r2dbc:r2dbc-postgresql:${r2dbcVersion}")
     implementation("io.r2dbc:r2dbc-pool:${r2dbcVersion}")
-    implementation("org.postgresql:postgresql:$postgresqlDriverVersion")
+    implementation("org.postgresql:postgresql")
     implementation("io.r2dbc:r2dbc-spi:${r2dbcVersion}")
     implementation(
         group = "io.netty",
         name = "netty-transport-native-epoll",
-        version = nettyVersion,
         classifier = "linux-x86_64"
     )
     implementation(
         group = "io.netty",
         name = "netty-transport-native-kqueue",
-        version = nettyVersion,
         classifier = "osx-x86_64"
     )
 
-    kapt(platform("io.micronaut:micronaut-bom:$micronautVersion"))
-    kapt("io.qalipsis:api-processors:${project.version}")
-    kapt("io.qalipsis:api-dsl:${project.version}")
-    kapt("io.qalipsis:api-common:${project.version}")
-    kapt("io.aeris-consulting:catadioptre-annotations:${catadioptreVersion}")
+    kapt(platform("io.qalipsis:plugin-platform:${coreVersion}"))
+    kapt("io.qalipsis:api-processors")
+    kapt("io.qalipsis:api-dsl")
+    kapt("io.qalipsis:api-common")
+    kapt("io.aeris-consulting:catadioptre-annotations")
 
-    testImplementation("io.qalipsis:test:${project.version}")
+    testImplementation("org.jetbrains.kotlin:kotlin-reflect")
+    testImplementation("io.qalipsis:test")
     testImplementation("io.micronaut.test:micronaut-test-junit5")
     testImplementation("javax.annotation:javax.annotation-api")
     testImplementation("io.micronaut:micronaut-runtime")
-    testImplementation("io.aeris-consulting:catadioptre-kotlin:${catadioptreVersion}")
-    testImplementation(testFixtures("io.qalipsis:api-dsl:${project.version}"))
-    testImplementation(testFixtures("io.qalipsis:api-common:${project.version}"))
-    testImplementation("org.testcontainers:testcontainers:${testContainersVersion}")
-    testImplementation("org.testcontainers:postgresql:${testContainersVersion}")
-    testRuntimeOnly("io.qalipsis:runtime:${project.version}")
-    testRuntimeOnly("io.qalipsis:head:${project.version}")
-    testRuntimeOnly("io.qalipsis:factory:${project.version}")
+    testImplementation("io.aeris-consulting:catadioptre-kotlin")
+    testImplementation(testFixtures("io.qalipsis:api-dsl"))
+    testImplementation(testFixtures("io.qalipsis:api-common"))
+    testImplementation("org.testcontainers:testcontainers")
+    testImplementation("org.testcontainers:postgresql")
+    testRuntimeOnly("io.qalipsis:runtime")
+    testRuntimeOnly("io.qalipsis:head")
+    testRuntimeOnly("io.qalipsis:factory")
 
 
-    kaptTest(platform("io.micronaut:micronaut-bom:${micronautVersion}"))
+    kaptTest(platform("io.qalipsis:plugin-platform:${coreVersion}"))
     kaptTest("io.micronaut:micronaut-inject-java")
-    kaptTest("io.qalipsis:api-processors:${project.version}")
+    kaptTest("io.qalipsis:api-processors")
 }
 
 
