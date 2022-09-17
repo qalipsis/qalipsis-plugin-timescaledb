@@ -1,10 +1,10 @@
-# <a src="https://qalipsis.io"><img src="http://assets.qalipsis.io/qalipsis-logo.png" style="height:60px;width:60px;position:relative;top:18px;margin-right:20px;"/>QALIPSIS for TimecaleDB</a>
+# <a src="https://qalipsis.io"><img src="http://assets.qalipsis.io/qalipsis-logo.png" style="height:60px;width:60px;position:relative;top:18px;margin-right:20px;"/>QALIPSIS for TimescaleDB</a>
 
-![CI](https://github.com/qalipsis/qalipsis-plugin-timescaledb/actions/workflows/gradle-main.yml/badge.svg)
+![CI](https://github.com/qalipsis/qalipsis-plugin-timescaledb/actions/workflows/gradle-master.yml/badge.svg)
 
 ## Introduction
 
-This repository contains the TimecaleDB plugin of QALIPSIS, an enterprise-grade load and performance-testing tool especially
+This repository contains the TimescaleDB plugin of QALIPSIS, an enterprise-grade load and performance-testing tool especially
 designed for distributed systems. It is a step above other load test applications that merely evaluate your system
 internally.
 
@@ -29,5 +29,5 @@ You can find examples of QALIPSIS scenarios under https://github.com/qalipsis/qa
 
 ## License
 
-The QALIPSIS plugin for TimecaleDB is distributed under the Apache License 2.0, the terms can be
+The QALIPSIS plugin for TimescaleDB is distributed under the Apache License 2.0, the terms can be
 read [here](./LICENSE).
