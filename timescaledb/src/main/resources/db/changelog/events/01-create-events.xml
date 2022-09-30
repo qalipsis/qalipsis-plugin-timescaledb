@@ -32,13 +32,13 @@
       <column name="level" type="varchar(20)">
         <constraints nullable="false"/>
       </column>
-      <column name="tenant" type="varchar(20)">
+      <column name="tenant" type="varchar(30)">
         <constraints nullable="true"/>
       </column>
-      <column name="campaign" type="varchar(20)">
+      <column name="campaign" type="varchar(30)">
         <constraints nullable="true"/>
       </column>
-      <column name="scenario" type="varchar(20)">
+      <column name="scenario" type="varchar(100)">
         <constraints nullable="true"/>
       </column>
       <column name="tags" type="jsonb">

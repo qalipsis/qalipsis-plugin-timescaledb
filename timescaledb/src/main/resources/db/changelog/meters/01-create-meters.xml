@@ -35,13 +35,13 @@
       <column name="type" type="varchar(50)">
         <constraints nullable="false"/>
       </column>
-      <column name="tenant" type="varchar(20)">
+      <column name="tenant" type="varchar(30)">
         <constraints nullable="true"/>
       </column>
-      <column name="campaign" type="varchar(20)">
+      <column name="campaign" type="varchar(30)">
         <constraints nullable="true"/>
       </column>
-      <column name="scenario" type="varchar(20)">
+      <column name="scenario" type="varchar(100)">
         <constraints nullable="true"/>
       </column>
       <column name="count" type="decimal(18,6)">
