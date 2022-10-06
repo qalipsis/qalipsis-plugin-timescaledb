@@ -249,6 +249,13 @@ internal abstract class AbstractMeterDataProviderIntegrationTest : TestPropertyP
                     timestamp = Timestamp.from(Instant.now()),
                     type = "gauge",
                     tenant = "tenant-1",
+                    tags = """{"tag-1":"value-1","tag-2":"value-2","tag-3":""}"""
+                ),
+                TimescaledbMeter(
+                    RandomStringUtils.randomAlphabetic(5),
+                    timestamp = Timestamp.from(Instant.now()),
+                    type = "gauge",
+                    tenant = "tenant-1",
                     tags = """{"tag-1":"value-2","tag-2":"value-2","tag-3":"value-3"}"""
                 ),
                 TimescaledbMeter(
@@ -267,9 +274,18 @@ internal abstract class AbstractMeterDataProviderIntegrationTest : TestPropertyP
         // then
         assertThat(allTagsOfTenant1).all {
             hasSize(3)
-            key("tag-1").containsOnly("value-1", "value-2")
-            key("tag-2").containsOnly("value-2")
-            key("tag-3").containsOnly("value-3")
+            key("tag-1").all {
+                hasSize(2)
+                containsOnly("value-1", "value-2")
+            }
+            key("tag-2").all {
+                hasSize(1)
+                containsOnly("value-2")
+            }
+            key("tag-3").all {
+                hasSize(1)
+                containsOnly("value-3")
+            }
         }
 
         // when
@@ -310,6 +326,13 @@ internal abstract class AbstractMeterDataProviderIntegrationTest : TestPropertyP
                     timestamp = Timestamp.from(Instant.now()),
                     type = "gauge",
                     tenant = "tenant-1",
+                    tags = """{"tag-1":"value-1","tag-2":"value-2","tag-3":""}"""
+                ),
+                TimescaledbMeter(
+                    RandomStringUtils.randomAlphabetic(5),
+                    timestamp = Timestamp.from(Instant.now()),
+                    type = "gauge",
+                    tenant = "tenant-1",
                     tags = """{"tag-1":"value-2","tag-2":"value-2","tag-3":"value-3"}"""
                 ),
                 TimescaledbMeter(
@@ -328,9 +351,18 @@ internal abstract class AbstractMeterDataProviderIntegrationTest : TestPropertyP
         // then
         assertThat(result).all {
             hasSize(3)
-            key("tag-1").containsOnly("value-1", "value-2")
-            key("tag-2").containsOnly("value-2")
-            key("tag-3").containsOnly("value-3")
+            key("tag-1").all {
+                hasSize(2)
+                containsOnly("value-1", "value-2")
+            }
+            key("tag-2").all {
+                hasSize(1)
+                containsOnly("value-2")
+            }
+            key("tag-3").all {
+                hasSize(1)
+                containsOnly("value-3")
+            }
         }
 
         // when

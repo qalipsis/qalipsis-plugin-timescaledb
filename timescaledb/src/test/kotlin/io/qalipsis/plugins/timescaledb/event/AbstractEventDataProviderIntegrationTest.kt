@@ -233,6 +233,16 @@ internal abstract class AbstractEventDataProviderIntegrationTest : TestPropertyP
                     EventLevel.INFO,
                     tags = listOf(
                         EventTag("tenant", "tenant-1"),
+                        EventTag("tag-1", "value-1"),
+                        EventTag("tag-2", "value-2"),
+                        EventTag("tag-3", "")
+                    )
+                ),
+                Event(
+                    RandomStringUtils.randomAlphabetic(5),
+                    EventLevel.INFO,
+                    tags = listOf(
+                        EventTag("tenant", "tenant-1"),
                         EventTag("campaign", "campaign-1"),
                         EventTag("scenario", "scenario-1"),
                         EventTag("tag-1", "value-2"),
@@ -254,9 +264,18 @@ internal abstract class AbstractEventDataProviderIntegrationTest : TestPropertyP
         // then
         assertThat(allTagsOfTenant1).all {
             hasSize(3)
-            key("tag-1").containsOnly("value-1", "value-2")
-            key("tag-2").containsOnly("value-2")
-            key("tag-3").containsOnly("value-3")
+            key("tag-1").all {
+                hasSize(2)
+                containsOnly("value-1", "value-2")
+            }
+            key("tag-2").all {
+                hasSize(1)
+                containsOnly("value-2")
+            }
+            key("tag-3").all {
+                hasSize(1)
+                containsOnly("value-3")
+            }
         }
 
         // when
@@ -295,6 +314,16 @@ internal abstract class AbstractEventDataProviderIntegrationTest : TestPropertyP
                     EventLevel.INFO,
                     tags = listOf(
                         EventTag("tenant", "tenant-1"),
+                        EventTag("tag-1", "value-1"),
+                        EventTag("tag-2", "value-2"),
+                        EventTag("tag-3", "")
+                    )
+                ),
+                Event(
+                    RandomStringUtils.randomAlphabetic(5),
+                    EventLevel.INFO,
+                    tags = listOf(
+                        EventTag("tenant", "tenant-1"),
                         EventTag("campaign", "campaign-1"),
                         EventTag("scenario", "scenario-1"),
                         EventTag("tag-1", "value-2"),
@@ -316,9 +345,18 @@ internal abstract class AbstractEventDataProviderIntegrationTest : TestPropertyP
         // then
         assertThat(result).all {
             hasSize(3)
-            key("tag-1").containsOnly("value-1", "value-2")
-            key("tag-2").containsOnly("value-2")
-            key("tag-3").containsOnly("value-3")
+            key("tag-1").all {
+                hasSize(2)
+                containsOnly("value-1", "value-2")
+            }
+            key("tag-2").all {
+                hasSize(1)
+                containsOnly("value-2")
+            }
+            key("tag-3").all {
+                hasSize(1)
+                containsOnly("value-3")
+            }
         }
 
         // when

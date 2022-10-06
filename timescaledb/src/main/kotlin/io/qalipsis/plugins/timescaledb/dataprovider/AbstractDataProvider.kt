@@ -70,7 +70,7 @@ internal abstract class AbstractDataProvider(
         size: Int
     ): Map<String, Collection<String>> {
         val sql =
-            StringBuilder("""SELECT tags.key AS KEY, STRING_AGG(tags.value, ',' ORDER BY tags.value) AS value FROM $databaseTable AS e, lateral jsonb_each_text(tags) AS tags WHERE "tenant" = $1""")
+            StringBuilder("""SELECT tags.key AS KEY, STRING_AGG(DISTINCT(tags.value), ',' ORDER BY tags.value) AS value FROM $databaseTable AS e, lateral jsonb_each_text(tags) AS tags WHERE "tenant" = $1 AND tags.value <> ''""")
         if (filters.isNotEmpty()) {
             sql.append(""" AND (tags.key ILIKE any (array[$2]) OR tags.value ILIKE any (array[$2]))""")
         }
