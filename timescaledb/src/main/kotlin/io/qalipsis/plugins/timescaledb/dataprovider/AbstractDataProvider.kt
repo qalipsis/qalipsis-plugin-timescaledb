@@ -43,7 +43,8 @@ internal abstract class AbstractDataProvider(
     }
 
     suspend fun searchNames(tenant: String, filters: Collection<String>, size: Int): Collection<String> {
-        val sql = StringBuilder("""SELECT DISTINCT "name" FROM $databaseTable WHERE "tenant" = $1""")
+        val sql =
+            StringBuilder("""SELECT DISTINCT "name" FROM $databaseTable WHERE "tenant" = $1 AND "campaign" IS NOT NULL""")
         if (filters.isNotEmpty()) {
             sql.append(""" AND "name" ILIKE any (array[$2])""")
         }
@@ -70,7 +71,10 @@ internal abstract class AbstractDataProvider(
         size: Int
     ): Map<String, Collection<String>> {
         val sql =
-            StringBuilder("""SELECT tags.key AS KEY, STRING_AGG(DISTINCT(tags.value), ',' ORDER BY tags.value) AS value FROM $databaseTable AS e, lateral jsonb_each_text(tags) AS tags WHERE "tenant" = $1 AND tags.value <> ''""")
+            StringBuilder(
+                """SELECT tags.key AS KEY, STRING_AGG(DISTINCT(tags.value), ',' ORDER BY tags.value) AS value FROM $databaseTable AS e, lateral jsonb_each_text(tags) AS tags 
+                |WHERE "tenant" = $1 AND "campaign" IS NOT NULL AND tags.value <> ''""".trimMargin()
+            )
         if (filters.isNotEmpty()) {
             sql.append(""" AND (tags.key ILIKE any (array[$2]) OR tags.value ILIKE any (array[$2]))""")
         }

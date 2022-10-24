@@ -129,9 +129,21 @@ internal abstract class AbstractEventDataProviderIntegrationTest : TestPropertyP
         publisher.doPerformPublish((100..199).flatMap {
             listOf(
                 // In the tenant 1, events are saved twice to verify the distinct.
-                Event("my-event-$it-info", EventLevel.INFO, tags = listOf(EventTag("tenant", "tenant-1"))),
-                Event("my-event-$it-info", EventLevel.INFO, tags = listOf(EventTag("tenant", "tenant-1"))),
-                Event("my-event-$it-warn", EventLevel.WARN, tags = listOf(EventTag("tenant", "tenant-2")))
+                Event(
+                    "my-event-$it-info",
+                    EventLevel.INFO,
+                    tags = listOf(EventTag("tenant", "tenant-1"), EventTag("campaign", "any"))
+                ),
+                Event(
+                    "my-event-$it-info",
+                    EventLevel.INFO,
+                    tags = listOf(EventTag("tenant", "tenant-1"), EventTag("campaign", "any"))
+                ),
+                Event(
+                    "my-event-$it-warn",
+                    EventLevel.WARN,
+                    tags = listOf(EventTag("tenant", "tenant-2"), EventTag("campaign", "any"))
+                )
             )
         })
 
@@ -165,8 +177,16 @@ internal abstract class AbstractEventDataProviderIntegrationTest : TestPropertyP
         // Index of constant size are used to make the verification of the alpha sorting easier.
         publisher.doPerformPublish((100..199).flatMap {
             listOf(
-                Event("my-event-$it-info", EventLevel.INFO, tags = listOf(EventTag("tenant", "tenant-1"))),
-                Event("my-event-$it-warn", EventLevel.WARN, tags = listOf(EventTag("tenant", "tenant-2")))
+                Event(
+                    "my-event-$it-info",
+                    EventLevel.INFO,
+                    tags = listOf(EventTag("tenant", "tenant-1"), EventTag("campaign", "any"))
+                ),
+                Event(
+                    "my-event-$it-warn",
+                    EventLevel.WARN,
+                    tags = listOf(EventTag("tenant", "tenant-2"), EventTag("campaign", "any"))
+                )
             )
         })
         val filters = setOf("mY-eVenT-10*", "*-1?9-*")
@@ -226,13 +246,18 @@ internal abstract class AbstractEventDataProviderIntegrationTest : TestPropertyP
                 Event(
                     RandomStringUtils.randomAlphabetic(5),
                     EventLevel.INFO,
-                    tags = listOf(EventTag("tenant", "tenant-1"), EventTag("tag-1", "value-1"))
+                    tags = listOf(
+                        EventTag("tenant", "tenant-1"),
+                        EventTag("campaign", "any"),
+                        EventTag("tag-1", "value-1")
+                    )
                 ),
                 Event(
                     RandomStringUtils.randomAlphabetic(5),
                     EventLevel.INFO,
                     tags = listOf(
                         EventTag("tenant", "tenant-1"),
+                        EventTag("campaign", "any"),
                         EventTag("tag-1", "value-1"),
                         EventTag("tag-2", "value-2"),
                         EventTag("tag-3", "")
@@ -243,6 +268,7 @@ internal abstract class AbstractEventDataProviderIntegrationTest : TestPropertyP
                     EventLevel.INFO,
                     tags = listOf(
                         EventTag("tenant", "tenant-1"),
+                        EventTag("campaign", "any"),
                         EventTag("campaign", "campaign-1"),
                         EventTag("scenario", "scenario-1"),
                         EventTag("tag-1", "value-2"),
@@ -253,7 +279,11 @@ internal abstract class AbstractEventDataProviderIntegrationTest : TestPropertyP
                 Event(
                     RandomStringUtils.randomAlphabetic(5),
                     EventLevel.WARN,
-                    tags = listOf(EventTag("tenant", "tenant-2"), EventTag("tag-2", "value-3"))
+                    tags = listOf(
+                        EventTag("tenant", "tenant-2"),
+                        EventTag("campaign", "any"),
+                        EventTag("tag-2", "value-3")
+                    )
                 )
             )
         )
@@ -307,13 +337,18 @@ internal abstract class AbstractEventDataProviderIntegrationTest : TestPropertyP
                 Event(
                     RandomStringUtils.randomAlphabetic(5),
                     EventLevel.INFO,
-                    tags = listOf(EventTag("tenant", "tenant-1"), EventTag("tag-1", "value-1"))
+                    tags = listOf(
+                        EventTag("tenant", "tenant-1"),
+                        EventTag("campaign", "any"),
+                        EventTag("tag-1", "value-1")
+                    )
                 ),
                 Event(
                     RandomStringUtils.randomAlphabetic(5),
                     EventLevel.INFO,
                     tags = listOf(
                         EventTag("tenant", "tenant-1"),
+                        EventTag("campaign", "any"),
                         EventTag("tag-1", "value-1"),
                         EventTag("tag-2", "value-2"),
                         EventTag("tag-3", "")
@@ -334,7 +369,11 @@ internal abstract class AbstractEventDataProviderIntegrationTest : TestPropertyP
                 Event(
                     RandomStringUtils.randomAlphabetic(5),
                     EventLevel.WARN,
-                    tags = listOf(EventTag("tenant", "tenant-2"), EventTag("tag-2", "value-3"))
+                    tags = listOf(
+                        EventTag("tenant", "tenant-2"),
+                        EventTag("campaign", "any"),
+                        EventTag("tag-2", "value-3")
+                    )
                 )
             )
         )

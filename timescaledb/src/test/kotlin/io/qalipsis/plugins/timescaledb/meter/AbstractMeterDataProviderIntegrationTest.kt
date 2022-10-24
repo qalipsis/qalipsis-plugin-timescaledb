@@ -118,6 +118,7 @@ internal abstract class AbstractMeterDataProviderIntegrationTest : TestPropertyP
                     timestamp = Timestamp.from(Instant.now()),
                     type = "gauge",
                     tenant = "tenant-1",
+                    campaign = "any",
                     tags = null
                 ),
                 TimescaledbMeter(
@@ -125,6 +126,7 @@ internal abstract class AbstractMeterDataProviderIntegrationTest : TestPropertyP
                     timestamp = Timestamp.from(Instant.now()),
                     type = "gauge",
                     tenant = "tenant-1",
+                    campaign = "any",
                     tags = null
                 ),
                 TimescaledbMeter(
@@ -132,6 +134,7 @@ internal abstract class AbstractMeterDataProviderIntegrationTest : TestPropertyP
                     timestamp = Timestamp.from(Instant.now()),
                     type = "timer",
                     tenant = "tenant-2",
+                    campaign = "any",
                     tags = null
                 )
             )
@@ -172,6 +175,7 @@ internal abstract class AbstractMeterDataProviderIntegrationTest : TestPropertyP
                     timestamp = Timestamp.from(Instant.now()),
                     type = "gauge",
                     tenant = "tenant-1",
+                    campaign = "any",
                     tags = null
                 ),
                 TimescaledbMeter(
@@ -179,6 +183,7 @@ internal abstract class AbstractMeterDataProviderIntegrationTest : TestPropertyP
                     timestamp = Timestamp.from(Instant.now()),
                     type = "timer",
                     tenant = "tenant-2",
+                    campaign = "any",
                     tags = null
                 )
             )
@@ -242,6 +247,7 @@ internal abstract class AbstractMeterDataProviderIntegrationTest : TestPropertyP
                     timestamp = Timestamp.from(Instant.now()),
                     type = "gauge",
                     tenant = "tenant-1",
+                    campaign = "any",
                     tags = """{"tag-1":"value-1"}"""
                 ),
                 TimescaledbMeter(
@@ -249,6 +255,7 @@ internal abstract class AbstractMeterDataProviderIntegrationTest : TestPropertyP
                     timestamp = Timestamp.from(Instant.now()),
                     type = "gauge",
                     tenant = "tenant-1",
+                    campaign = "any",
                     tags = """{"tag-1":"value-1","tag-2":"value-2","tag-3":""}"""
                 ),
                 TimescaledbMeter(
@@ -256,6 +263,7 @@ internal abstract class AbstractMeterDataProviderIntegrationTest : TestPropertyP
                     timestamp = Timestamp.from(Instant.now()),
                     type = "gauge",
                     tenant = "tenant-1",
+                    campaign = "any",
                     tags = """{"tag-1":"value-2","tag-2":"value-2","tag-3":"value-3"}"""
                 ),
                 TimescaledbMeter(
@@ -263,6 +271,7 @@ internal abstract class AbstractMeterDataProviderIntegrationTest : TestPropertyP
                     timestamp = Timestamp.from(Instant.now()),
                     type = "type",
                     tenant = "tenant-2",
+                    campaign = "any",
                     tags = """{"tag-2":"value-3"}"""
                 )
             )
@@ -319,6 +328,7 @@ internal abstract class AbstractMeterDataProviderIntegrationTest : TestPropertyP
                     timestamp = Timestamp.from(Instant.now()),
                     type = "gauge",
                     tenant = "tenant-1",
+                    campaign = "any",
                     tags = """{"tag-1":"value-1"}"""
                 ),
                 TimescaledbMeter(
@@ -326,6 +336,7 @@ internal abstract class AbstractMeterDataProviderIntegrationTest : TestPropertyP
                     timestamp = Timestamp.from(Instant.now()),
                     type = "gauge",
                     tenant = "tenant-1",
+                    campaign = "any",
                     tags = """{"tag-1":"value-1","tag-2":"value-2","tag-3":""}"""
                 ),
                 TimescaledbMeter(
@@ -333,6 +344,7 @@ internal abstract class AbstractMeterDataProviderIntegrationTest : TestPropertyP
                     timestamp = Timestamp.from(Instant.now()),
                     type = "gauge",
                     tenant = "tenant-1",
+                    campaign = "any",
                     tags = """{"tag-1":"value-2","tag-2":"value-2","tag-3":"value-3"}"""
                 ),
                 TimescaledbMeter(
@@ -340,6 +352,7 @@ internal abstract class AbstractMeterDataProviderIntegrationTest : TestPropertyP
                     timestamp = Timestamp.from(Instant.now()),
                     type = "type",
                     tenant = "tenant-2",
+                    campaign = "any",
                     tags = """{"tag-2":"value-3"}"""
                 )
             )
