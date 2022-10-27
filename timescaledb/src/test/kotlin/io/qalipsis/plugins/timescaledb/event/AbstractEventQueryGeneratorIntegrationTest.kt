@@ -29,6 +29,7 @@ import io.qalipsis.api.query.AggregationQueryExecutionContext
 import io.qalipsis.api.query.DataRetrievalQueryExecutionContext
 import io.qalipsis.api.query.Page
 import io.qalipsis.api.query.QueryAggregationOperator
+import io.qalipsis.api.query.QueryAggregationOperator.MAX
 import io.qalipsis.api.query.QueryClause
 import io.qalipsis.api.query.QueryClauseOperator
 import io.qalipsis.api.query.QueryDescription
@@ -57,6 +58,7 @@ import org.junit.jupiter.api.BeforeEach
 import org.junit.jupiter.api.Nested
 import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.Timeout
+import org.junit.jupiter.api.assertThrows
 import org.junit.jupiter.api.extension.RegisterExtension
 import org.testcontainers.junit.jupiter.Testcontainers
 import reactor.core.publisher.Flux
@@ -1123,6 +1125,44 @@ internal abstract class AbstractEventQueryGeneratorIntegrationTest : TestPropert
 
     @Nested
     open inner class AggregationCalculation {
+
+        @Test
+        internal fun `should not generate the query when the field is not known`() =
+            testDispatcherProvider.run {
+                // given
+                val aggregationQuery = QueryDescription(
+                    fieldName = "unknown-field",
+                    QueryClause("name", QueryClauseOperator.IS, "my-event-1"),
+                )
+
+                // then
+                val exception = assertThrows<IllegalArgumentException> {
+                    eventQueryGenerator.prepareQueries(
+                        "tenant-1",
+                        aggregationQuery
+                    )
+                }
+                assertThat(exception.message).isEqualTo("The field unknown-field is not valid for a data series of type EVENT")
+            }
+
+        @Test
+        internal fun `should not generate the query when aggregating a non number field`() =
+            testDispatcherProvider.run {
+                // given
+                val aggregationQuery = QueryDescription(
+                    fieldName = "message",
+                    aggregationOperation = MAX
+                )
+
+                // then
+                val exception = assertThrows<IllegalArgumentException> {
+                    eventQueryGenerator.prepareQueries(
+                        "tenant-1",
+                        aggregationQuery
+                    )
+                }
+                assertThat(exception.message).isEqualTo("The field message is not numeric and cannot be aggregated")
+            }
 
         @Test
         internal fun `should aggregate no data from empty tenant`() =

@@ -31,6 +31,7 @@ import java.math.BigDecimal
 import java.sql.Timestamp
 import java.time.Instant
 import java.util.concurrent.TimeUnit
+import java.util.concurrent.TimeUnit.NANOSECONDS
 
 /**
  * Converter for Micrometer meters for TimescaleDB.
@@ -42,8 +43,7 @@ internal class TimescaledbMeterConverter {
     fun convert(
         meters: List<Meter>,
         instant: Instant,
-        namingConvention: NamingConvention,
-        baseTimeUnit: TimeUnit
+        namingConvention: NamingConvention
     ): List<TimescaledbMeter> {
         val timestamp = Timestamp.from(instant)
         return meters.map { meter ->
@@ -58,14 +58,17 @@ internal class TimescaledbMeterConverter {
                         tenant = tag.value
                         null
                     }
+
                     "campaign" -> {
                         campaign = tag.value
                         null
                     }
+
                     "scenario" -> {
                         scenario = tag.value
                         null
                     }
+
                     else -> {
                         """"${
                             StringEscapeUtils.escapeJson(tag.key).lowercase()
@@ -89,14 +92,14 @@ internal class TimescaledbMeterConverter {
                 scenario = scenario,
             )
             when (meter) {
-                is TimeGauge -> convertTimeGauge(meter, timescaledbMeter, baseTimeUnit)
+                is TimeGauge -> convertTimeGauge(meter, timescaledbMeter)
                 is Gauge -> convertGauge(meter, timescaledbMeter)
                 is Counter -> convertCounter(meter, timescaledbMeter)
-                is Timer -> convertTimer(meter, timescaledbMeter, baseTimeUnit)
+                is Timer -> convertTimer(meter, timescaledbMeter)
                 is DistributionSummary -> convertSummary(meter, timescaledbMeter)
-                is LongTaskTimer -> convertLongTaskTimer(meter, timescaledbMeter, baseTimeUnit)
+                is LongTaskTimer -> convertLongTaskTimer(meter, timescaledbMeter)
                 is FunctionCounter -> convertFunctionCounter(meter, timescaledbMeter)
-                is FunctionTimer -> convertFunctionTimer(meter, timescaledbMeter, baseTimeUnit)
+                is FunctionTimer -> convertFunctionTimer(meter, timescaledbMeter)
                 else -> convertMeter(meter, timescaledbMeter)
             }
         }
@@ -142,12 +145,11 @@ internal class TimescaledbMeterConverter {
      */
     private fun convertTimeGauge(
         gauge: TimeGauge,
-        timescaledbMeter: TimescaledbMeter,
-        baseTimeUnit: TimeUnit
+        timescaledbMeter: TimescaledbMeter
     ): TimescaledbMeter {
-        val value = gauge.value(baseTimeUnit)
+        val value = gauge.value(BASE_TIME_UNIT)
         if (java.lang.Double.isFinite(value)) {
-            return timescaledbMeter.copy(value = BigDecimal(value), unit = "$baseTimeUnit")
+            return timescaledbMeter.copy(value = BigDecimal(value), unit = "$BASE_TIME_UNIT")
         }
         return timescaledbMeter
     }
@@ -157,16 +159,15 @@ internal class TimescaledbMeterConverter {
      */
     private fun convertFunctionTimer(
         timer: FunctionTimer,
-        timescaledbMeter: TimescaledbMeter,
-        baseTimeUnit: TimeUnit
+        timescaledbMeter: TimescaledbMeter
     ): TimescaledbMeter {
-        val sum = timer.totalTime(baseTimeUnit)
-        val mean = timer.mean(baseTimeUnit)
+        val sum = timer.totalTime(BASE_TIME_UNIT)
+        val mean = timer.mean(BASE_TIME_UNIT)
         return timescaledbMeter.copy(
             count = BigDecimal(timer.count()),
             sum = BigDecimal(sum),
             mean = BigDecimal(mean),
-            unit = "$baseTimeUnit"
+            unit = "$BASE_TIME_UNIT"
         )
     }
 
@@ -175,13 +176,12 @@ internal class TimescaledbMeterConverter {
      */
     private fun convertLongTaskTimer(
         timer: LongTaskTimer,
-        timescaledbMeter: TimescaledbMeter,
-        baseTimeUnit: TimeUnit
+        timescaledbMeter: TimescaledbMeter
     ): TimescaledbMeter {
         return timescaledbMeter.copy(
             activeTasks = timer.activeTasks(),
-            duration = BigDecimal(timer.duration(baseTimeUnit)),
-            unit = "$baseTimeUnit"
+            duration = BigDecimal(timer.duration(NANOSECONDS)),
+            unit = "$BASE_TIME_UNIT"
         )
     }
 
@@ -190,15 +190,14 @@ internal class TimescaledbMeterConverter {
      */
     private fun convertTimer(
         timer: Timer,
-        timescaledbMeter: TimescaledbMeter,
-        baseTimeUnit: TimeUnit
+        timescaledbMeter: TimescaledbMeter
     ): TimescaledbMeter {
         return timescaledbMeter.copy(
             count = BigDecimal(timer.count()),
-            sum = BigDecimal(timer.totalTime(baseTimeUnit)),
-            mean = BigDecimal(timer.mean(baseTimeUnit)),
-            max = BigDecimal(timer.max(baseTimeUnit)),
-            unit = "$baseTimeUnit"
+            sum = BigDecimal(timer.totalTime(BASE_TIME_UNIT)),
+            mean = BigDecimal(timer.mean(BASE_TIME_UNIT)),
+            max = BigDecimal(timer.max(BASE_TIME_UNIT)),
+            unit = "$BASE_TIME_UNIT"
         )
     }
 
@@ -239,6 +238,12 @@ internal class TimescaledbMeterConverter {
             }
             timescaledbMeter.copy(other = otherMeasurements)
         }
+    }
+
+    private companion object {
+
+        val BASE_TIME_UNIT = TimeUnit.NANOSECONDS
+
     }
 
 }

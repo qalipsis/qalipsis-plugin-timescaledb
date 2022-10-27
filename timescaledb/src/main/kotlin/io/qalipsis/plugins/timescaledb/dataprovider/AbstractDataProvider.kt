@@ -31,8 +31,11 @@ internal abstract class AbstractDataProvider(
     private val connectionPool: ConnectionPool,
     private val databaseTable: String,
     private val queryGenerator: AbstractQueryGenerator,
-    private val objectMapper: ObjectMapper
+    private val objectMapper: ObjectMapper,
+    excludedTags: Set<String> = emptySet()
 ) {
+
+    private val excludedTagsArray = excludedTags.toTypedArray()
 
     suspend fun createQuery(tenant: String, query: QueryDescription): String {
         return objectMapper.writeValueAsString(queryGenerator.prepareQueries(tenant, query))
@@ -75,19 +78,24 @@ internal abstract class AbstractDataProvider(
                 """SELECT tags.key AS KEY, STRING_AGG(DISTINCT(tags.value), ',' ORDER BY tags.value) AS value FROM $databaseTable AS e, lateral jsonb_each_text(tags) AS tags 
                 |WHERE "tenant" = $1 AND "campaign" IS NOT NULL AND tags.value <> ''""".trimMargin()
             )
+        sql.append(""" AND tags.key <> all (array[$2])""")
         if (filters.isNotEmpty()) {
-            sql.append(""" AND (tags.key ILIKE any (array[$2]) OR tags.value ILIKE any (array[$2]))""")
+            sql.append(""" AND (tags.key ILIKE any (array[$3]) OR tags.value ILIKE any (array[$3]))""")
         }
         sql.append(""" GROUP BY tags.key ORDER BY tags.key LIMIT $size""")
 
         return Flux.usingWhen(
             connectionPool.create(),
             { connection ->
-                Flux.from(connection.createStatement(sql.toString()).bind("$1", tenant).also {
-                    if (filters.isNotEmpty()) {
-                        it.bind("$2", filters.map(this::convertWildcards).toTypedArray())
-                    }
-                }.execute()).flatMap { result ->
+                Flux.from(
+                    connection.createStatement(sql.toString())
+                        .bind("$1", tenant).bind("$2", excludedTagsArray)
+                        .also {
+                            if (filters.isNotEmpty()) {
+                                it.bind("$3", filters.map(this::convertWildcards).toTypedArray())
+                            }
+                        }.execute()
+                ).flatMap { result ->
                     result.map { row, _ ->
                         row.get("key", String::class.java)!! to (row.get("value", String::class.java)?.split(',')
                             .orEmpty())

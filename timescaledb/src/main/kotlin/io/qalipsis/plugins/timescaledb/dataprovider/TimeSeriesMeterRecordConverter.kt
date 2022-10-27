@@ -59,9 +59,8 @@ internal class TimeSeriesMeterRecordConverter(
             sumDuration = row.get("sum", BigDecimal::class.java)?.toLong()?.let(Duration::ofNanos),
             meanDuration = row.get("mean", BigDecimal::class.java)?.toLong()?.let(Duration::ofNanos),
             maxDuration = row.get("max", BigDecimal::class.java)?.toLong()?.let(Duration::ofNanos),
-
             activeTasks = row.get("active_tasks", BigDecimal::class.java)?.toInt(),
-            duration = row.get("duration", BigDecimal::class.java)?.toLong()?.let(Duration::ofNanos),
+            duration = row.get("duration_nano", BigDecimal::class.java)?.toLong()?.let(Duration::ofNanos),
         )
     }
 

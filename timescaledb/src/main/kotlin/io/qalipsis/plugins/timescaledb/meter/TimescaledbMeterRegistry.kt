@@ -90,7 +90,6 @@ internal class TimescaledbMeterRegistry(
         super.stop()
         datasource.close()
         log.debug { "The meter registry publisher was stopped" }
-
     }
 
     override fun getBaseTimeUnit(): TimeUnit {
@@ -99,7 +98,7 @@ internal class TimescaledbMeterRegistry(
 
     public override fun publish() {
         val timescaledbMeters =
-            converter.convert(meters, Instant.ofEpochMilli(clock.wallTime()), config().namingConvention(), baseTimeUnit)
+            converter.convert(meters, Instant.ofEpochMilli(clock.wallTime()), config().namingConvention())
         doPublish(timescaledbMeters)
     }
 
@@ -155,7 +154,7 @@ internal class TimescaledbMeterRegistry(
         val DEFAULT_THREAD_FACTORY = NamedThreadFactory("timescaledb-metrics-publisher")
 
         const val SQL =
-            "INSERT into %s (name, tags, timestamp, tenant, campaign, scenario, type, count, value, sum, mean, active_tasks, duration, unit, max, other) values (?, to_json(?::json), ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)"
+            "INSERT into %s (name, tags, timestamp, tenant, campaign, scenario, type, count, value, sum, mean, active_tasks, duration_nano, unit, max, other) values (?, to_json(?::json), ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)"
 
         val log = logger()
     }

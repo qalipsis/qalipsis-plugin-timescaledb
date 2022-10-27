@@ -45,5 +45,6 @@ internal class TimescaledbMeterDataProvider(
     connectionPool = connectionPool,
     databaseTable = "meters",
     queryGenerator = meterQueryGenerator,
-    objectMapper = objectMapper
+    objectMapper = objectMapper,
+    excludedTags = setOf("minion", "dag")
 ), MeterMetadataProvider

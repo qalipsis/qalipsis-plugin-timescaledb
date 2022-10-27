@@ -50,6 +50,7 @@ internal abstract class AbstractQueryGenerator(
      * Prepares the query to aggregate the data in time-buckets.
      */
     private fun prepareAggregationQuery(tenant: String, query: QueryDescription, preparedQueries: PreparedQueries) {
+        require(query.fieldName == null || query.fieldName in queryFieldsByName.keys) { "The field ${query.fieldName} is not valid for a data series of type $dataType" }
         if (query.aggregationOperation != QueryAggregationOperator.COUNT) {
             require(query.fieldName in numericFields) { "The field ${query.fieldName} is not numeric and cannot be aggregated" }
         }
@@ -222,11 +223,13 @@ internal abstract class AbstractQueryGenerator(
             } else {
                 bindingParam
             }
+
             QueryClauseOperator.IS_NOT_LIKE -> "NOT ILIKE " + if (paramType.isArray) {
                 "all (array[$bindingParam])"
             } else {
                 bindingParam
             }
+
             else -> {
                 paramType = paramType.raw
                 when (operator) {
@@ -261,6 +264,7 @@ internal abstract class AbstractQueryGenerator(
             in booleanFields -> {
                 SerializableBoundParameter.Type.BOOLEAN
             }
+
             in numericFields -> {
                 if (value.contains(',')) {
                     SerializableBoundParameter.Type.NUMBER_ARRAY
@@ -268,6 +272,7 @@ internal abstract class AbstractQueryGenerator(
                     SerializableBoundParameter.Type.NUMBER
                 }
             }
+
             else -> {
                 if (value.contains(',')) {
                     SerializableBoundParameter.Type.STRING_ARRAY

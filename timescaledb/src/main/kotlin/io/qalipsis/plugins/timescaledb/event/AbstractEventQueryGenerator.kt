@@ -28,7 +28,7 @@ internal abstract class AbstractEventQueryGenerator : AbstractQueryGenerator(
     queryFields = FIELDS,
     numericFields = FIELDS.filter { it.type == DataFieldType.NUMBER }.map { it.name }.toSet(),
     booleanFields = FIELDS.filter { it.type == DataFieldType.BOOLEAN }.map { it.name }.toSet(),
-    jsonFields = JSON_FIELDS
+    jsonFields = JSON_FIELDS,
 ) {
 
     companion object {

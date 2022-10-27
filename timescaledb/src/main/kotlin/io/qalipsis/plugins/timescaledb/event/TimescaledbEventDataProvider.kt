@@ -45,5 +45,6 @@ internal class TimescaledbEventDataProvider(
     connectionPool = connectionPool,
     databaseTable = "events",
     queryGenerator = eventQueryGenerator,
-    objectMapper = objectMapper
+    objectMapper = objectMapper,
+    excludedTags = setOf("minion", "isexhausted", "istail", "iteration", "previous-step")
 ), EventMetadataProvider

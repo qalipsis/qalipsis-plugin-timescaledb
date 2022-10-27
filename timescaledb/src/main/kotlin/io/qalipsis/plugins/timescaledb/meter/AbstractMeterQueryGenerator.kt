@@ -20,6 +20,7 @@ import io.qalipsis.api.report.DataField
 import io.qalipsis.api.report.DataFieldType
 import io.qalipsis.plugins.timescaledb.dataprovider.AbstractQueryGenerator
 import io.qalipsis.plugins.timescaledb.dataprovider.DataType
+import java.util.concurrent.TimeUnit
 
 internal abstract class AbstractMeterQueryGenerator : AbstractQueryGenerator(
     dataType = DataType.METER,
@@ -40,7 +41,7 @@ internal abstract class AbstractMeterQueryGenerator : AbstractQueryGenerator(
             DataField("sum", DataFieldType.NUMBER),
             DataField("mean", DataFieldType.NUMBER),
             DataField("active_tasks", DataFieldType.NUMBER),
-            DataField("duration", DataFieldType.NUMBER),
+            DataField("duration_nano", DataFieldType.NUMBER, TimeUnit.NANOSECONDS.toString()),
             DataField("max", DataFieldType.NUMBER),
             DataField("other", DataFieldType.OBJECT)
         ).sortedBy { it.name }
