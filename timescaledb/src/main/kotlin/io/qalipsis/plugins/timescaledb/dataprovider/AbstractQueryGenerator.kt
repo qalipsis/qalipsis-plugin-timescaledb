@@ -189,7 +189,12 @@ internal abstract class AbstractQueryGenerator(
                     }"""
                 )
             } else {
-                sql.append(""" AND ${databaseTable}.tags->>'${clause.name}'""")
+                val clauseName = when {
+                    clause.name.startsWith("tag.") -> clause.name.substringAfter("tag.")
+                    clause.name.startsWith("tags.") -> clause.name.substringAfter("tags.")
+                    else -> clause.name
+                }
+                sql.append(""" AND ${databaseTable}.tags->>'${clauseName}'""")
                 sql.append(
                     """ ${
                         convertComparator(
