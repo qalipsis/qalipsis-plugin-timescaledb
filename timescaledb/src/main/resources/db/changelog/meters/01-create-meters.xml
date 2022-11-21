@@ -73,22 +73,31 @@
       </column>
     </createTable>
 
-    <createIndex tableName="meters" indexName="tenant_meter_idx">
-      <column name="tenant"/>
+    <createIndex tableName="meters" indexName="meters_name_idx">
+      <column name="name"/>
     </createIndex>
 
-    <createIndex tableName="meters" indexName="tenant_campaign_meter_idx">
+    <createIndex tableName="meters" indexName="meters_tenant_name_idx">
+      <column name="tenant"/>
+      <column name="name"/>
+    </createIndex>
+
+    <createIndex tableName="meters" indexName="meters_tenant_campaign_name_idx">
       <column name="tenant"/>
       <column name="campaign"/>
+      <column name="name"/>
     </createIndex>
 
-    <createIndex tableName="meters" indexName="tenant_campaign_scenario_meter_idx">
+    <createIndex tableName="meters" indexName="meters_tenant_campaign_scenario_name_idx">
       <column name="tenant"/>
       <column name="campaign"/>
       <column name="scenario"/>
+      <column name="name"/>
     </createIndex>
+
     <sql>
-      CREATE INDEX meters_tags_idx ON meters USING GIN (tags);
+      CREATE INDEX meters_tags_idx ON meters USING
+        GIN (to_tsvector('english', tenant), to_tsvector('english', campaign), to_tsvector('english', scenario), to_tsvector('english', name), tags);
     </sql>
   </changeSet>
 
