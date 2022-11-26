@@ -25,7 +25,10 @@ import io.micronaut.context.env.Environment
 import io.micronaut.core.naming.conventions.StringConvention
 import io.micronaut.core.util.StringUtils
 import io.qalipsis.api.config.MetersConfig
+import io.qalipsis.api.meters.MeterRegistryConfiguration
+import io.qalipsis.api.meters.MeterRegistryFactory
 import jakarta.inject.Singleton
+import java.time.Duration
 import java.util.Properties
 
 /**
@@ -38,21 +41,33 @@ import java.util.Properties
     Requires(property = MetersConfig.EXPORT_ENABLED, notEquals = StringUtils.FALSE),
     Requires(property = TimescaledbMeterRegistryFactory.TIMESCALEDB_ENABLED, notEquals = StringUtils.FALSE)
 )
-internal class TimescaledbMeterRegistryFactory {
+internal class TimescaledbMeterRegistryFactory(environment: Environment) : MeterRegistryFactory {
+
+    private val properties = Properties()
+
+    init {
+        properties.putAll(environment.getProperties(MetersConfig.EXPORT_CONFIGURATION, StringConvention.RAW))
+        properties.putAll(environment.getProperties(MetersConfig.EXPORT_CONFIGURATION, StringConvention.CAMEL_CASE))
+    }
 
     @Singleton
     @Bean(preDestroy = "stop")
-    fun timescaleRegistry(environment: Environment): TimescaledbMeterRegistry {
-        val properties = Properties()
-        properties.putAll(environment.getProperties(MetersConfig.EXPORT_CONFIGURATION, StringConvention.RAW))
-        properties.putAll(environment.getProperties(MetersConfig.EXPORT_CONFIGURATION, StringConvention.CAMEL_CASE))
-
+    fun timescaleRegistry(): TimescaledbMeterRegistry {
         return TimescaledbMeterRegistry(object : TimescaledbMeterConfig() {
             override fun prefix() = "timescaledb"
             override fun get(key: String): String? {
                 return properties.getProperty(key)
             }
+        }, TimescaledbMeterConverter(), Clock.SYSTEM)
+    }
 
+    override fun getRegistry(configuration: MeterRegistryConfiguration): TimescaledbMeterRegistry {
+        return TimescaledbMeterRegistry(object : TimescaledbMeterConfig() {
+            override fun prefix() = "timescaledb"
+            override fun step(): Duration = configuration.step ?: super.step()
+            override fun get(key: String): String? {
+                return properties.getProperty(key)
+            }
         }, TimescaledbMeterConverter(), Clock.SYSTEM)
     }
 

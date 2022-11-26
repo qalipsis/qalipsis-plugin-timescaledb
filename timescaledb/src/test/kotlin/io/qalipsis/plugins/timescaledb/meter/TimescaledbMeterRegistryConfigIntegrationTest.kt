@@ -29,11 +29,14 @@ import io.micronaut.context.ApplicationContext
 import io.micronaut.core.util.StringUtils
 import io.micronaut.test.extensions.junit5.annotation.MicronautTest
 import io.micronaut.test.support.TestPropertyProvider
+import io.qalipsis.api.meters.MeterRegistryConfiguration
+import io.qalipsis.api.meters.MeterRegistryFactory
 import io.qalipsis.test.assertk.prop
 import jakarta.inject.Inject
 import org.junit.jupiter.api.Nested
 import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.Timeout
+import java.time.Duration
 
 internal class TimescaledbMeterRegistryConfigIntegrationTest {
 
@@ -48,6 +51,7 @@ internal class TimescaledbMeterRegistryConfigIntegrationTest {
         @Timeout(4)
         fun `should start without the registry`() {
             assertThat(applicationContext.getBeansOfType(TimescaledbMeterRegistry::class.java)).isEmpty()
+            assertThat(applicationContext.getBeansOfType(MeterRegistryFactory::class.java)).isEmpty()
         }
     }
 
@@ -73,8 +77,46 @@ internal class TimescaledbMeterRegistryConfigIntegrationTest {
                 prop(TimescaledbMeterConfig::username).isEqualTo("qalipsis_user")
                 prop(TimescaledbMeterConfig::password).isEqualTo("qalipsis-pwd")
                 prop(TimescaledbMeterConfig::schema).isEqualTo("meters")
+                prop(TimescaledbMeterConfig::step).isEqualTo(Duration.ofSeconds(10))
                 prop(TimescaledbMeterConfig::timestampFieldName).isEqualTo("timestamp")
             }
+
+            val meterRegistryFactory = applicationContext.getBean(MeterRegistryFactory::class.java)
+            var generatedMeterRegistry = meterRegistryFactory.getRegistry(
+                object : MeterRegistryConfiguration {
+                    override val step: Duration? = null
+
+                }
+            )
+            assertThat(generatedMeterRegistry).prop("config").isNotNull().isInstanceOf(TimescaledbMeterConfig::class)
+                .all {
+                    prop(TimescaledbMeterConfig::host).isEqualTo("localhost")
+                    prop(TimescaledbMeterConfig::port).isEqualTo(5432)
+                    prop(TimescaledbMeterConfig::database).isEqualTo("qalipsis")
+                    prop(TimescaledbMeterConfig::username).isEqualTo("qalipsis_user")
+                    prop(TimescaledbMeterConfig::password).isEqualTo("qalipsis-pwd")
+                    prop(TimescaledbMeterConfig::schema).isEqualTo("meters")
+                    prop(TimescaledbMeterConfig::step).isEqualTo(Duration.ofSeconds(10))
+                    prop(TimescaledbMeterConfig::timestampFieldName).isEqualTo("timestamp")
+                }
+
+            generatedMeterRegistry = meterRegistryFactory.getRegistry(
+                object : MeterRegistryConfiguration {
+                    override val step: Duration = Duration.ofSeconds(3)
+
+                }
+            )
+            assertThat(generatedMeterRegistry).prop("config").isNotNull().isInstanceOf(TimescaledbMeterConfig::class)
+                .all {
+                    prop(TimescaledbMeterConfig::host).isEqualTo("localhost")
+                    prop(TimescaledbMeterConfig::port).isEqualTo(5432)
+                    prop(TimescaledbMeterConfig::database).isEqualTo("qalipsis")
+                    prop(TimescaledbMeterConfig::username).isEqualTo("qalipsis_user")
+                    prop(TimescaledbMeterConfig::password).isEqualTo("qalipsis-pwd")
+                    prop(TimescaledbMeterConfig::schema).isEqualTo("meters")
+                    prop(TimescaledbMeterConfig::step).isEqualTo(Duration.ofSeconds(3))
+                    prop(TimescaledbMeterConfig::timestampFieldName).isEqualTo("timestamp")
+                }
         }
 
         override fun getProperties(): Map<String, String> {
@@ -108,6 +150,7 @@ internal class TimescaledbMeterRegistryConfigIntegrationTest {
                 prop(TimescaledbMeterConfig::username).isEqualTo("the user")
                 prop(TimescaledbMeterConfig::password).isEqualTo("the password")
                 prop(TimescaledbMeterConfig::schema).isEqualTo("the schema")
+                prop(TimescaledbMeterConfig::step).isEqualTo(Duration.ofMinutes(6))
                 prop(TimescaledbMeterConfig::timestampFieldName).isEqualTo("timestamp")
             }
         }
@@ -122,6 +165,7 @@ internal class TimescaledbMeterRegistryConfigIntegrationTest {
                 "meters.export.timescaledb.password" to "the password",
                 "meters.export.timescaledb.schema" to "the schema",
                 "meters.export.timescaledb.autostart" to "false",
+                "meters.export.timescaledb.step" to "6m",
                 "meters.export.timescaledb.autoconnect" to "false"
             )
         }
