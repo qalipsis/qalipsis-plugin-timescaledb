@@ -24,6 +24,7 @@ import assertk.assertions.isEqualTo
 import assertk.assertions.isNotNull
 import assertk.assertions.isNull
 import assertk.assertions.prop
+import io.micrometer.core.instrument.Tag
 import io.micronaut.test.extensions.junit5.annotation.MicronautTest
 import io.micronaut.test.support.TestPropertyProvider
 import io.qalipsis.api.logging.LoggerHelper.logger
@@ -48,6 +49,7 @@ import java.math.BigDecimal
 import java.sql.Timestamp
 import java.time.Duration
 import java.time.OffsetDateTime
+import java.util.concurrent.atomic.AtomicInteger
 
 @Testcontainers
 @MicronautTest(environments = ["timescaledb"], startApplication = false)
@@ -142,6 +144,19 @@ internal abstract class AbstractTimescaledbMetersRegistryIntegrationTest : TestP
             record(110.40)
             record(90.20)
         }
+        meterRegistry.gauge(
+            "4-the-gauge",
+            listOf(
+                Tag.of("gauge-tag", "gauge-value"),
+                Tag.of("tenant", "tenant-3"),
+                Tag.of("campaign", "campaign-3"),
+                Tag.of("scenario", "scenario-3")
+            ),
+            AtomicInteger(13)
+        )!!.apply {
+            incrementAndGet()
+            addAndGet(6)
+        }
 
         // when
         do {
@@ -149,7 +164,7 @@ internal abstract class AbstractTimescaledbMetersRegistryIntegrationTest : TestP
             val recordsCounts =
                 executeSelect("select name, count(*) from meters where count > 0 or value > 2 group by name order by name")
             logger().info { "Found meters: ${recordsCounts.joinToString { it["name"] as String }}" }
-        } while (recordsCounts.size < 3) // One count by meter is expected.
+        } while (recordsCounts.size < 4) // One count by meter is expected.
         meterRegistry.stop()
 
         // then
@@ -179,7 +194,7 @@ internal abstract class AbstractTimescaledbMetersRegistryIntegrationTest : TestP
             )
         }
         assertThat(savedMeters).all {
-            hasSize(3)
+            hasSize(4)
             index(0).all {
                 prop(TimescaledbMeter::name).isEqualTo("1-the-timer")
                 prop(TimescaledbMeter::timestamp).isNotNull()
@@ -218,6 +233,16 @@ internal abstract class AbstractTimescaledbMetersRegistryIntegrationTest : TestP
                 prop(TimescaledbMeter::tenant).isEqualTo("tenant-2")
                 prop(TimescaledbMeter::campaign).isEqualTo("campaign-2")
                 prop(TimescaledbMeter::scenario).isEqualTo("scenario-2")
+            }
+            index(3).all {
+                prop(TimescaledbMeter::name).isEqualTo("4-the-gauge")
+                prop(TimescaledbMeter::timestamp).isNotNull()
+                prop(TimescaledbMeter::type).isEqualTo("gauge")
+                prop(TimescaledbMeter::tags).isEqualTo("""{"gauge-tag": "gauge-value"}""")
+                prop(TimescaledbMeter::value).isNotNull().transform { it.toDouble() }.isEqualTo(20.0)
+                prop(TimescaledbMeter::tenant).isEqualTo("tenant-3")
+                prop(TimescaledbMeter::campaign).isEqualTo("campaign-3")
+                prop(TimescaledbMeter::scenario).isEqualTo("scenario-3")
             }
         }
     }
