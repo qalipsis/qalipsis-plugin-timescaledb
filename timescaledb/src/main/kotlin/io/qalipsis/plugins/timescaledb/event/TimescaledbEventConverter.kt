@@ -116,14 +116,23 @@ internal class TimescaledbEventConverter(
             is EventGeoPoint -> {
                 timescaledbEvent.copy(geoPoint = """{"type": "Point","coordinates":[${value.latitude},${value.longitude}]}""")
             }
+
             is Throwable -> {
                 timescaledbEvent.copy(error = value.message, stackTrace = stackTraceToString(value))
             }
+
             is Iterable<*> -> {
                 var event = timescaledbEvent
                 value.filterNotNull().forEach { event = addValue(it, event) }
                 event
             }
+
+            is Array<*> -> {
+                var event = timescaledbEvent
+                value.filterNotNull().forEach { event = addValue(it, event) }
+                event
+            }
+
             else -> {
                 timescaledbEvent.copy(value = objectMapper.writeValueAsString(value))
             }
