@@ -16,6 +16,7 @@
 
 package io.qalipsis.plugins.timescaledb.meter
 
+import io.micronaut.context.annotation.Context
 import io.micronaut.context.annotation.Factory
 import io.micronaut.context.annotation.Requirements
 import io.micronaut.context.annotation.Requires
@@ -42,7 +43,11 @@ internal class MeterQueryGeneratorFactory {
         return connectionPool
     }
 
-    @Singleton
+    /**
+     * The bean has to be created in the context initialization phase, otherwise
+     * [DbUtils.isDbTimescale] will block a non-blocking thread and generate a failure.
+     */
+    @Context
     fun meterQueryGenerator(@Named("meter-data-provider") connectionPool: ConnectionPool): AbstractMeterQueryGenerator {
         return if (DbUtils.isDbTimescale(connectionPool)) {
             log.info { "Using TimescaleDB as meter data provider" }

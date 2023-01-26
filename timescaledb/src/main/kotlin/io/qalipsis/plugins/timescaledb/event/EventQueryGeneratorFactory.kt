@@ -16,6 +16,7 @@
 
 package io.qalipsis.plugins.timescaledb.event
 
+import io.micronaut.context.annotation.Context
 import io.micronaut.context.annotation.Factory
 import io.micronaut.context.annotation.Requirements
 import io.micronaut.context.annotation.Requires
@@ -42,7 +43,11 @@ internal class EventQueryGeneratorFactory {
         return connectionPool
     }
 
-    @Singleton
+    /**
+     * The bean has to be created in the context initialization phase, otherwise
+     * [DbUtils.isDbTimescale] will block a non-blocking thread and generate a failure.
+     */
+    @Context
     fun eventQueryGenerator(@Named("event-data-provider") connectionPool: ConnectionPool): AbstractEventQueryGenerator {
         return if (DbUtils.isDbTimescale(connectionPool)) {
             log.info { "Using TimescaleDB as event data provider" }

@@ -39,7 +39,7 @@ import java.util.Properties
 @Factory
 @Requirements(
     Requires(property = MetersConfig.EXPORT_ENABLED, notEquals = StringUtils.FALSE),
-    Requires(property = TimescaledbMeterRegistryFactory.TIMESCALEDB_ENABLED, notEquals = StringUtils.FALSE)
+    Requires(property = TimescaledbMeterRegistryFactory.TIMESCALEDB_ENABLED, value = StringUtils.TRUE)
 )
 internal class TimescaledbMeterRegistryFactory(environment: Environment) : MeterRegistryFactory {
 

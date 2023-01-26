@@ -23,7 +23,6 @@ import org.testcontainers.junit.jupiter.Container
 import java.time.Duration
 import kotlin.math.pow
 
-
 internal class PostgresqlMetersRegistryIntegrationTest : AbstractTimescaledbMetersRegistryIntegrationTest() {
 
     override val dbPort: Int
