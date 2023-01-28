@@ -16,6 +16,7 @@
 
 package io.qalipsis.plugins.timescaledb.dataprovider
 
+import io.r2dbc.postgresql.client.SSLMode
 import java.time.Duration
 
 /**
@@ -37,6 +38,16 @@ interface DataProviderConfiguration {
     val username: String
 
     val password: String
+
+    val enableSsl: Boolean
+
+    val sslMode: SSLMode
+
+    val sslRootCert: String?
+
+    val sslCert: String?
+
+    val sslKey: String?
 
     val minSize: Int
 

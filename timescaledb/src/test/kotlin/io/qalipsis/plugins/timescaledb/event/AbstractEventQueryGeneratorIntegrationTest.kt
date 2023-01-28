@@ -46,6 +46,7 @@ import io.qalipsis.plugins.timescaledb.event.catadioptre.publishConvertedEvents
 import io.qalipsis.plugins.timescaledb.utils.DbUtils
 import io.qalipsis.test.coroutines.TestDispatcherProvider
 import io.r2dbc.pool.ConnectionPool
+import io.r2dbc.postgresql.client.SSLMode
 import io.r2dbc.spi.Connection
 import jakarta.inject.Inject
 import kotlinx.coroutines.CoroutineScope
@@ -125,7 +126,11 @@ internal abstract class AbstractEventQueryGeneratorIntegrationTest : TestPropert
                 override val minSize: Int = 1
                 override val maxSize: Int = 2
                 override val maxIdleTime: Duration = Duration.ofSeconds(30)
-
+                override val enableSsl: Boolean = false
+                override val sslMode: SSLMode = SSLMode.ALLOW
+                override val sslRootCert: String? = null
+                override val sslCert: String? = null
+                override val sslKey: String? = null
             })
 
             Flux.usingWhen(

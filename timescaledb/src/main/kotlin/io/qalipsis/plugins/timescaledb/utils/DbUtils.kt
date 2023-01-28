@@ -21,6 +21,7 @@ import io.r2dbc.pool.ConnectionPool
 import io.r2dbc.pool.ConnectionPoolConfiguration
 import io.r2dbc.postgresql.PostgresqlConnectionConfiguration
 import io.r2dbc.postgresql.PostgresqlConnectionFactory
+import io.r2dbc.postgresql.client.SSLMode
 import io.r2dbc.spi.Connection
 import reactor.core.publisher.Flux
 
@@ -59,6 +60,16 @@ internal object DbUtils {
                 .password(configuration.password)
                 .database(configuration.database)
                 .schema(configuration.schema)
+                .also { builder ->
+                    if (configuration.enableSsl) {
+                        builder.enableSsl()
+                            .sslMode(configuration.sslMode)
+                        configuration.sslRootCert?.let { builder.sslRootCert(it) }
+                        configuration.sslCert?.let { builder.sslCert(it) }
+                        configuration.sslKey?.let { builder.sslKey(it) }
+                    }
+                }
+                .sslMode(SSLMode.ALLOW)
                 .applicationName("qalipsis-timescaledb")
                 .build()
         )

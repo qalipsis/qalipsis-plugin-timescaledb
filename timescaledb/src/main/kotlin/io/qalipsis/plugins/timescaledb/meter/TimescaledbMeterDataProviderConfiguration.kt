@@ -21,6 +21,7 @@ import io.micronaut.context.annotation.Requires
 import io.micronaut.core.bind.annotation.Bindable
 import io.micronaut.core.util.StringUtils
 import io.qalipsis.plugins.timescaledb.dataprovider.DataProviderConfiguration
+import io.r2dbc.postgresql.client.SSLMode
 import java.time.Duration
 import javax.validation.constraints.Min
 import javax.validation.constraints.NotBlank
@@ -56,6 +57,18 @@ interface TimescaledbMeterDataProviderConfiguration : DataProviderConfiguration 
 
     @get:NotBlank
     override val password: String
+
+    @get:Bindable(defaultValue = "false")
+    override val enableSsl: Boolean
+
+    @get:Bindable(defaultValue = "PREFER")
+    override val sslMode: SSLMode
+
+    override val sslRootCert: String?
+
+    override val sslCert: String?
+
+    override val sslKey: String?
 
     @get:Bindable(defaultValue = "1")
     @get:Min(1)
