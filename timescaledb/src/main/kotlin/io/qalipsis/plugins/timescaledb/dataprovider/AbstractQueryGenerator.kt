@@ -16,6 +16,7 @@
 
 package io.qalipsis.plugins.timescaledb.dataprovider
 
+import io.qalipsis.api.lang.supplyIf
 import io.qalipsis.api.logging.LoggerHelper.logger
 import io.qalipsis.api.query.QueryAggregationOperator
 import io.qalipsis.api.query.QueryClause
@@ -97,9 +98,13 @@ internal abstract class AbstractQueryGenerator(
             ":end",
             SerializableBoundParameter(serializedValue = null, SerializableBoundParameter.Type.STRING, "$2")
         )
-        preparedQueries.bindAggregationParameter(
-            "tenant",
-            SerializableBoundParameter(serializedValue = tenant, SerializableBoundParameter.Type.STRING, "$3")
+        preparedQueries.bindCountAndRetrievalParameter(
+            ":tenant",
+            SerializableBoundParameter(
+                serializedValue = supplyIf(tenant != "_qalipsis_") { tenant }, // The default value is
+                SerializableBoundParameter.Type.STRING,
+                "$3"
+            )
         )
     }
 
@@ -162,7 +167,7 @@ internal abstract class AbstractQueryGenerator(
             SerializableBoundParameter(serializedValue = null, SerializableBoundParameter.Type.STRING, "$2")
         )
         preparedQueries.bindCountAndRetrievalParameter(
-            "tenant",
+            ":tenant",
             SerializableBoundParameter(serializedValue = tenant, SerializableBoundParameter.Type.STRING, "$3")
         )
     }
