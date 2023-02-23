@@ -37,7 +37,7 @@ internal abstract class AbstractDataProvider(
 
     private val excludedTagsArray = excludedTags.toTypedArray()
 
-    suspend fun createQuery(tenant: String, query: QueryDescription): String {
+    suspend fun createQuery(tenant: String?, query: QueryDescription): String {
         return objectMapper.writeValueAsString(queryGenerator.prepareQueries(tenant, query))
     }
 

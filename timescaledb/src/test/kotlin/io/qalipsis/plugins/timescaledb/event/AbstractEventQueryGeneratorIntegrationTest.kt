@@ -71,7 +71,7 @@ import java.time.temporal.ChronoUnit
 import java.util.concurrent.TimeUnit
 
 @Testcontainers
-@MicronautTest(startApplication = false, environments = ["standalone"])
+@MicronautTest(startApplication = false, environments = ["standalone"], transactional=false)
 @Timeout(20, unit = TimeUnit.SECONDS)
 internal abstract class AbstractEventQueryGeneratorIntegrationTest : TestPropertyProvider {
 
@@ -233,7 +233,43 @@ internal abstract class AbstractEventQueryGeneratorIntegrationTest : TestPropert
                 )
             }
 
-            publisher.publishConvertedEvents(events1Tenant1 + events2Tenant1 + events1Tenant2)
+            // Events for "my-event-1" for the default tenant.
+            currentEventTimestamp = start - timeStep.multipliedBy(2)
+            val events1DefaultTenant = fibonacciFromSize(3, 12).flatMap { number ->
+                currentEventTimestamp += timeStep
+                listOf(
+                    TimescaledbEvent(
+                        name = "my-event-1",
+                        level = "info",
+                        tenant = "default-tenant",
+                        campaign = "my-campaign-1",
+                        scenario = "my-scenario-1",
+                        tags = """{"number-tag": "$number","tenant-tag":"default-tenant","scenario-tag":"my-scenario-1"}""",
+                        timestamp = Timestamp.from(currentEventTimestamp),
+                        number = number.toBigDecimal(),
+                    )
+                )
+            }
+
+            // Events of name "my-event-2" for the default-tenant.
+            currentEventTimestamp = start - timeStep.multipliedBy(2)
+            val events2DefaultTenant = fibonacciFromSize(5, 12).flatMap { number ->
+                currentEventTimestamp += timeStep
+                listOf(
+                    TimescaledbEvent(
+                        name = "my-event-2",
+                        level = "info",
+                        tenant = "default-tenant",
+                        campaign = "my-campaign-1",
+                        scenario = "my-scenario-1",
+                        tags = """{"number-tag": "$number","tenant-tag":"default-tenant","scenario-tag":"my-scenario-1"}""",
+                        timestamp = Timestamp.from(currentEventTimestamp),
+                        number = number.toBigDecimal(),
+                    )
+                )
+            }
+
+            publisher.publishConvertedEvents(events1Tenant1 + events2Tenant1 + events1Tenant2 + events1DefaultTenant + events2DefaultTenant)
             delay(1000) // Wait for the transaction to be fully committed.
             initialized = true
         }
@@ -310,6 +346,59 @@ internal abstract class AbstractEventQueryGeneratorIntegrationTest : TestPropert
                             prop(TimeSeriesEvent::name).isEqualTo("my-event-1")
                             prop(TimeSeriesEvent::number).isNotNull()
                             prop(TimeSeriesEvent::tags).isNotNull().key("tenant-tag").isEqualTo("tenant-2")
+                        }
+                    }
+                }
+            }
+
+        @Test
+        internal fun `should fetch the values in the default tenant`() =
+            testDispatcherProvider.run {
+                // given
+                val query = QueryDescription(
+                    QueryClause("name", QueryClauseOperator.IS, "my-event-1")
+                )
+                val query1ForDefaultTenant = eventQueryGenerator.prepareQueries(null, query)
+                var result = executeSelect(
+                    coroutineScope = this,
+                    query = query1ForDefaultTenant,
+                    start = Instant.EPOCH,
+                    end = start + Duration.ofHours(3)
+                )
+
+                // then
+                assertThat(result.elements).all {
+                    hasSize(12)
+                    each {
+                        it.isInstanceOf(TimeSeriesEvent::class).all {
+                            prop(TimeSeriesEvent::name).isEqualTo("my-event-1")
+                            prop(TimeSeriesEvent::number).isNotNull()
+                            prop(TimeSeriesEvent::tags).isNotNull().key("tenant-tag").isEqualTo("default-tenant")
+                        }
+                    }
+                }
+
+                // when all the events "my-event-2" of default-tenant are selected.
+                val query2ForDefaultTenant = eventQueryGenerator.prepareQueries(
+                    null, QueryDescription(
+                        QueryClause("name", QueryClauseOperator.IS, "my-event-2")
+                    )
+                )
+                result = executeSelect(
+                    coroutineScope = this,
+                    query = query2ForDefaultTenant,
+                    start = Instant.EPOCH,
+                    end = start + Duration.ofHours(3)
+                )
+
+                // then
+                assertThat(result.elements).all {
+                    hasSize(12)
+                    each {
+                        it.isInstanceOf(TimeSeriesEvent::class).all {
+                            prop(TimeSeriesEvent::name).isEqualTo("my-event-2")
+                            prop(TimeSeriesEvent::number).isNotNull()
+                            prop(TimeSeriesEvent::tags).isNotNull().key("tenant-tag").isEqualTo("default-tenant")
                         }
                     }
                 }
@@ -1740,6 +1829,7 @@ internal abstract class AbstractEventQueryGeneratorIntegrationTest : TestPropert
             timeSeriesEventRecordConverter,
             connection,
             DataRetrievalQueryExecutionContext(
+                tenant = "default-tenant",
                 campaignsReferences = campaigns,
                 scenariosNames = scenariosNames,
                 from = start,
@@ -1767,6 +1857,7 @@ internal abstract class AbstractEventQueryGeneratorIntegrationTest : TestPropert
         return AggregationExecutor(
             connection,
             AggregationQueryExecutionContext(
+                tenant = "default-tenant",
                 campaignsReferences = campaigns,
                 scenariosNames = scenariosNames,
                 from = start,

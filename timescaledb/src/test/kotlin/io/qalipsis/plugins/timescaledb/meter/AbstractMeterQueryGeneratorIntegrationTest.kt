@@ -66,7 +66,7 @@ import java.time.temporal.ChronoUnit
 import java.util.concurrent.TimeUnit
 
 @Testcontainers
-@MicronautTest(startApplication = false, environments = ["standalone", "timescaledb"])
+@MicronautTest(startApplication = false, environments = ["standalone", "timescaledb"], transactional = false)
 @Timeout(20, unit = TimeUnit.SECONDS)
 internal abstract class AbstractMeterQueryGeneratorIntegrationTest : TestPropertyProvider {
 
@@ -213,7 +213,43 @@ internal abstract class AbstractMeterQueryGeneratorIntegrationTest : TestPropert
                 )
             }
 
-            meterRegistry.doPublish(meters1Tenant1 + meters2Tenant1 + meters1Tenant2)
+            // Meters of name "my-meter-1" for the default tenant.
+            currentMeterTimestamp = start - timeStep.multipliedBy(2)
+            val meters1DefaultTenant = fibonacciFromSize(8, 12).flatMap { value ->
+                currentMeterTimestamp += timeStep
+                listOf(
+                    TimescaledbMeter(
+                        name = "my-meter-1",
+                        tenant = "default-tenant",
+                        campaign = "my-campaign-1",
+                        scenario = "my-scenario-1",
+                        tags = """{"value-tag": "$value","tenant-tag":"default-tenant","scenario-tag":"my-scenario-1"}""",
+                        timestamp = Timestamp.from(currentMeterTimestamp),
+                        type = "gauge",
+                        value = value.toBigDecimal(),
+                    )
+                )
+            }
+
+            // Meters of name "my-meter-2" for the default tenant.
+            currentMeterTimestamp = start - timeStep.multipliedBy(2)
+            val meters2DefaultTenant = fibonacciFromSize(5, 12).flatMap { value ->
+                currentMeterTimestamp += timeStep
+                listOf(
+                    TimescaledbMeter(
+                        name = "my-meter-2",
+                        tenant = "default-tenant",
+                        campaign = "my-campaign-1",
+                        scenario = "my-scenario-1",
+                        tags = """{"value-tag": "$value","tenant-tag":"default-tenant","scenario-tag":"my-scenario-1"}""",
+                        timestamp = Timestamp.from(currentMeterTimestamp),
+                        type = "gauge",
+                        value = value.toBigDecimal(),
+                    )
+                )
+            }
+
+            meterRegistry.doPublish(meters1Tenant1 + meters2Tenant1 + meters1Tenant2 + meters1DefaultTenant + meters2DefaultTenant)
             delay(1000) // Wait for the transaction to be fully committed.
             initialized = true
         }
@@ -290,6 +326,57 @@ internal abstract class AbstractMeterQueryGeneratorIntegrationTest : TestPropert
                             prop(TimeSeriesMeter::name).isEqualTo("my-meter-1")
                             prop(TimeSeriesMeter::value).isNotNull()
                             prop(TimeSeriesMeter::tags).isNotNull().key("tenant-tag").isEqualTo("tenant-2")
+                        }
+                    }
+                }
+            }
+
+        @Test
+        internal fun `should fetch the values in the default tenant`() =
+            testDispatcherProvider.run {
+                // given
+                val query = QueryDescription(
+                    QueryClause("name", QueryClauseOperator.IS, "my-meter-1")
+                )
+                val query1ForDefaultTenant = meterQueryGenerator.prepareQueries(null, query)
+                var result = executeSelect(
+                    coroutineScope = this,
+                    query = query1ForDefaultTenant,
+                    start = Instant.EPOCH,
+                    end = start + Duration.ofHours(3)
+                )
+
+                // then
+                assertThat(result.elements).all {
+                    hasSize(12)
+                    each {
+                        it.isInstanceOf(TimeSeriesMeter::class).all {
+                            prop(TimeSeriesMeter::name).isEqualTo("my-meter-1")
+                            prop(TimeSeriesMeter::value).isNotNull()
+                            prop(TimeSeriesMeter::tags).isNotNull().key("tenant-tag").isEqualTo("default-tenant")
+                        }
+                    }
+                }
+
+                // when all the meters "my-meter-2" of tenant-1 are selected.
+                val query2ForDefaultTenant = meterQueryGenerator.prepareQueries(null, QueryDescription(
+                    QueryClause("name", QueryClauseOperator.IS, "my-meter-2")
+                ))
+                result = executeSelect(
+                    coroutineScope = this,
+                    query = query2ForDefaultTenant,
+                    start = Instant.EPOCH,
+                    end = start + Duration.ofHours(3)
+                )
+
+                // then
+                assertThat(result.elements).all {
+                    hasSize(12)
+                    each {
+                        it.isInstanceOf(TimeSeriesMeter::class).all {
+                            prop(TimeSeriesMeter::name).isEqualTo("my-meter-2")
+                            prop(TimeSeriesMeter::value).isNotNull()
+                            prop(TimeSeriesMeter::tags).isNotNull().key("tenant-tag").isEqualTo("default-tenant")
                         }
                     }
                 }
@@ -1751,6 +1838,7 @@ internal abstract class AbstractMeterQueryGeneratorIntegrationTest : TestPropert
             timeSeriesMeterRecordConverter,
             connection,
             DataRetrievalQueryExecutionContext(
+                tenant = "default-tenant",
                 campaignsReferences = campaigns,
                 scenariosNames = scenariosNames,
                 from = start,
@@ -1778,6 +1866,7 @@ internal abstract class AbstractMeterQueryGeneratorIntegrationTest : TestPropert
         return AggregationExecutor(
             connection,
             AggregationQueryExecutionContext(
+                tenant = "default-tenant",
                 campaignsReferences = campaigns,
                 scenariosNames = scenariosNames,
                 from = start,

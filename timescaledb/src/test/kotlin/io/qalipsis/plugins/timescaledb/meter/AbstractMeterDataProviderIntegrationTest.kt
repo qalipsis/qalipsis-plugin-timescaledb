@@ -46,7 +46,7 @@ import java.time.Instant
 import java.util.concurrent.TimeUnit
 
 @Testcontainers
-@MicronautTest(environments = ["timescaledb", "head"], startApplication = false)
+@MicronautTest(environments = ["timescaledb", "head"], startApplication = false, transactional = false)
 @Timeout(1, unit = TimeUnit.MINUTES)
 internal abstract class AbstractMeterDataProviderIntegrationTest : TestPropertyProvider {
 

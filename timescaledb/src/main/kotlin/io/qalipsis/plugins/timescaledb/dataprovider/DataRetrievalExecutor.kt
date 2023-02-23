@@ -94,7 +94,7 @@ internal class DataRetrievalExecutor(
     ) = Flux.usingWhen(
         connectionPool.create(), { connection ->
             Mono.from(connection.createStatement(sqlStatement).also { statement ->
-                bindArguments(statement, boundParameters, start, end)
+                bindArguments(context.tenant, statement, boundParameters, start, end)
             }.execute()).flatMapMany { result ->
                 result.map { row, metadata ->
                     converter.convert(row, metadata)
@@ -109,7 +109,7 @@ internal class DataRetrievalExecutor(
     ) = Flux.usingWhen(
         connectionPool.create(), { connection ->
             Mono.from(connection.createStatement(sqlStatement).also { statement ->
-                bindArguments(statement, boundParameters, start, end)
+                bindArguments(context.tenant, statement, boundParameters, start, end)
             }.execute()).flatMapMany { result ->
                 result.map { row, _ ->
                     row.get("count", BigDecimal::class.java)

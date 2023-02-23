@@ -68,7 +68,7 @@ internal class AggregationExecutor(
             connectionPool.create(),
             { connection ->
                 Mono.from(connection.createStatement(sqlStatement).also { statement ->
-                    bindArguments(statement, actualBoundParameters, actualStart, actualEnd)
+                    bindArguments(context.tenant, statement, actualBoundParameters, actualStart, actualEnd)
                 }.execute())
                     .flatMapMany { result ->
                         log.trace { "Received a result to the query" }
