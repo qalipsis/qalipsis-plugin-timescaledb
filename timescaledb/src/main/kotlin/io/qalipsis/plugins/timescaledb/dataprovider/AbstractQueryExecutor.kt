@@ -53,6 +53,7 @@ internal abstract class AbstractQueryExecutor<T> {
      * Binds the runtime arguments
      */
     protected fun bindArguments(
+        tenant: String,
         statement: Statement,
         boundParameter: Map<String, BoundParameter>,
         actualStart: Instant,
@@ -63,6 +64,11 @@ internal abstract class AbstractQueryExecutor<T> {
         statement.bind(boundParameter[":start"]!!.identifiers.first(), actualStart)
         log.trace { "Binding $actualEnd to ${boundParameter[":end"]!!.identifiers.first()}" }
         statement.bind(boundParameter[":end"]!!.identifiers.first(), actualEnd)
+        boundParameter[":tenant"]?.let {
+            val actualTenant = it.value ?: tenant
+            log.trace { "Binding $actualTenant to ${it.identifiers.first()}" }
+            statement.bind(it.identifiers.first(), actualTenant)
+        }
 
         // Bind the non-hard-coded arguments.
         boundParameter.filter { !it.key.startsWith(":") && it.value.identifiers.isNotEmpty() }.values.forEach { param ->

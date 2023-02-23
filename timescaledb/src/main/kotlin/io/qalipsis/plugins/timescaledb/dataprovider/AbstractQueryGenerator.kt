@@ -38,7 +38,7 @@ internal abstract class AbstractQueryGenerator(
     /**
      * Prepares the queries to fetch both aggregation and data according to the query description.
      */
-    fun prepareQueries(tenant: String, query: QueryDescription): PreparedQueries {
+    fun prepareQueries(tenant: String?, query: QueryDescription): PreparedQueries {
         log.debug { "Creating queries for the tenant $tenant and $query" }
         val prepareQueries = PreparedQueries(dataType)
         prepareAggregationQuery(tenant, query, prepareQueries)
@@ -50,7 +50,7 @@ internal abstract class AbstractQueryGenerator(
     /**
      * Prepares the query to aggregate the data in time-buckets.
      */
-    private fun prepareAggregationQuery(tenant: String, query: QueryDescription, preparedQueries: PreparedQueries) {
+    private fun prepareAggregationQuery(tenant: String?, query: QueryDescription, preparedQueries: PreparedQueries) {
         require(query.fieldName == null || query.fieldName in queryFieldsByName.keys) { "The field ${query.fieldName} is not valid for a data series of type $dataType" }
         if (query.aggregationOperation != QueryAggregationOperator.COUNT) {
             require(query.fieldName in numericFields) { "The field ${query.fieldName} is not numeric and cannot be aggregated" }
@@ -78,7 +78,7 @@ internal abstract class AbstractQueryGenerator(
     }
 
     private fun addDefaultParametersForAggregationStatement(
-        tenant: String,
+        tenant: String?,
         timeframeMillis: Long?,
         preparedQueries: PreparedQueries
     ) {
@@ -98,13 +98,9 @@ internal abstract class AbstractQueryGenerator(
             ":end",
             SerializableBoundParameter(serializedValue = null, SerializableBoundParameter.Type.STRING, "$2")
         )
-        preparedQueries.bindCountAndRetrievalParameter(
+        preparedQueries.bindAggregationParameter(
             ":tenant",
-            SerializableBoundParameter(
-                serializedValue = supplyIf(tenant != "_qalipsis_") { tenant }, // The default value is
-                SerializableBoundParameter.Type.STRING,
-                "$3"
-            )
+            SerializableBoundParameter(serializedValue = tenant, SerializableBoundParameter.Type.STRING, "$3")
         )
     }
 
@@ -121,7 +117,7 @@ internal abstract class AbstractQueryGenerator(
      * Prepares the statements to count and to retrieve the data in time-buckets.
      */
     private fun prepareCountAndRetrievalQuery(
-        tenant: String,
+        tenant: String?,
         query: QueryDescription,
         preparedQueries: PreparedQueries
     ) {
@@ -145,7 +141,7 @@ internal abstract class AbstractQueryGenerator(
             "SELECT * $sql ORDER BY ${databaseTable}.timestamp %order% LIMIT %limit% OFFSET %offset%"
     }
 
-    private fun addDefaultParametersForCountAndRetrievalStatement(tenant: String, preparedQueries: PreparedQueries) {
+    private fun addDefaultParametersForCountAndRetrievalStatement(tenant: String?, preparedQueries: PreparedQueries) {
         preparedQueries.bindCountAndRetrievalParameter(
             ":limit",
             SerializableBoundParameter(serializedValue = "100", SerializableBoundParameter.Type.NUMBER, "%limit%")
