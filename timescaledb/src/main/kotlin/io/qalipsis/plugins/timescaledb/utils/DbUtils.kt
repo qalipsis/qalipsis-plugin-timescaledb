@@ -23,6 +23,7 @@ import io.r2dbc.postgresql.PostgresqlConnectionConfiguration
 import io.r2dbc.postgresql.PostgresqlConnectionFactory
 import io.r2dbc.postgresql.client.SSLMode
 import io.r2dbc.spi.Connection
+import kotlinx.coroutines.reactive.awaitFirst
 import reactor.core.publisher.Flux
 
 internal object DbUtils {
@@ -81,6 +82,40 @@ internal object DbUtils {
             .build()
 
         return ConnectionPool(poolConfiguration)
+    }
+
+
+    /**
+     * Fetch the used space, in bytes by a tenant.
+     */
+    suspend fun fetchStorage(
+        connectionPool: ConnectionPool,
+        tenant: String,
+        schema: String,
+        databaseTable: String
+    ): Long {
+        val sql = StringBuilder(
+            """SELECT 
+                CASE 
+                    WHEN total_records = 0 THEN 0
+                    ELSE (total_size_bytes * tenant_records / total_records)
+                END AS used 
+                FROM
+                    (SELECT pg_total_relation_size('$schema.$databaseTable') AS total_size_bytes) AS total_size_bytes,
+                    (SELECT COUNT(*) AS total_records FROM $schema.$databaseTable) AS total_records,
+                    (SELECT count(1) AS tenant_records FROM $schema.$databaseTable WHERE tenant = '$tenant') AS tenant_records
+            """
+        )
+        return Flux.usingWhen(
+            connectionPool.create(), { connection ->
+                Flux.from(
+                    connection.createStatement(sql.toString()).execute()
+                ).flatMap { result ->
+                    result.map { row, _ -> row.get("used") as Long }
+                }
+            },
+            Connection::close
+        ).awaitFirst()
     }
 
 }
