@@ -18,7 +18,22 @@ package io.qalipsis.plugins.timescaledb.event
 
 import assertk.all
 import assertk.assertThat
-import assertk.assertions.*
+import assertk.assertions.each
+import assertk.assertions.hasSize
+import assertk.assertions.index
+import assertk.assertions.isBetween
+import assertk.assertions.isEmpty
+import assertk.assertions.isEqualTo
+import assertk.assertions.isGreaterThan
+import assertk.assertions.isIn
+import assertk.assertions.isInstanceOf
+import assertk.assertions.isLessThan
+import assertk.assertions.isNotEqualTo
+import assertk.assertions.isNotIn
+import assertk.assertions.isNotNull
+import assertk.assertions.isStrictlyBetween
+import assertk.assertions.key
+import assertk.assertions.prop
 import io.micronaut.test.extensions.junit5.annotation.MicronautTest
 import io.micronaut.test.support.TestPropertyProvider
 import io.mockk.every
@@ -1474,7 +1489,7 @@ internal abstract class AbstractEventQueryGeneratorIntegrationTest : TestPropert
                 "tenant-1", QueryDescription(
                     filters = listOf(QueryClause("name", QueryClauseOperator.IS, "my-event-1")),
                     fieldName = "number",
-                    aggregationOperation = QueryAggregationOperator.MAX,
+                    aggregationOperation = MAX,
                     timeframeUnit = Duration.ofSeconds(2)
                 )
             )

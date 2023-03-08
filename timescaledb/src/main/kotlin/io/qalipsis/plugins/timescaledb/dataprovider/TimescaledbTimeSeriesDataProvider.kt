@@ -27,28 +27,31 @@ import io.qalipsis.api.query.Page
 import io.qalipsis.api.report.TimeSeriesAggregationResult
 import io.qalipsis.api.report.TimeSeriesDataProvider
 import io.qalipsis.api.report.TimeSeriesRecord
-import io.qalipsis.plugins.timescaledb.event.TimescaledbEventDataProvider
-import io.qalipsis.plugins.timescaledb.meter.TimescaledbMeterDataProvider
+import io.qalipsis.plugins.timescaledb.event.TimescaledbEventDataProviderConfiguration
+import io.qalipsis.plugins.timescaledb.meter.TimescaledbMeterDataProviderConfiguration
+import io.qalipsis.plugins.timescaledb.utils.DbUtils
 import io.r2dbc.pool.ConnectionPool
 import jakarta.inject.Named
 import jakarta.inject.Singleton
+import java.time.Duration
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.async
 import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.flow.mapNotNull
 import kotlinx.coroutines.flow.toList
 import kotlinx.coroutines.withTimeout
-import java.time.Duration
 
 @Singleton
-@Requires(beans = [TimescaledbMeterDataProvider::class, TimescaledbEventDataProvider::class])
+@Requires(bean = AbstractDataProvider::class)
 internal class TimescaledbTimeSeriesDataProvider(
     private val objectMapper: ObjectMapper,
     @Nullable @Named("event-data-provider") private val eventConnectionPool: ConnectionPool?,
     @Nullable @Named("meter-data-provider") private val meterConnectionPool: ConnectionPool?,
     @Named(Executors.IO_EXECUTOR_NAME) private val ioCoroutineScope: CoroutineScope,
     private val timeSeriesMeterRecordConverter: TimeSeriesMeterRecordConverter,
-    private val timeSeriesEventRecordConverter: TimeSeriesEventRecordConverter
+    private val timeSeriesEventRecordConverter: TimeSeriesEventRecordConverter,
+    @Nullable private val timescaledbEventDataProviderConfiguration: TimescaledbEventDataProviderConfiguration?,
+    @Nullable private val timescaledbMeterDataProviderConfiguration: TimescaledbMeterDataProviderConfiguration?
 ) : TimeSeriesDataProvider {
 
     override suspend fun executeAggregations(
@@ -87,6 +90,27 @@ internal class TimescaledbTimeSeriesDataProvider(
                 query
             )
         }
+    }
+
+    override suspend fun retrieveUsedStorage(tenant: String): Long {
+        val eventsStorage = eventConnectionPool?.let { connection ->
+            DbUtils.fetchStorage(
+                connection,
+                tenant,
+                timescaledbEventDataProviderConfiguration?.schema!!,
+                "events"
+            )
+        } ?: 0
+        val metersStorage = meterConnectionPool?.let { connection ->
+            DbUtils.fetchStorage(
+                connection,
+                tenant,
+                timescaledbMeterDataProviderConfiguration?.schema!!,
+                "meters"
+            )
+        } ?: 0
+
+        return eventsStorage + metersStorage
     }
 
     private fun buildRetrievalExecutor(
