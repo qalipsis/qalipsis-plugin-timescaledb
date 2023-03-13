@@ -33,7 +33,8 @@ internal abstract class AbstractQueryExecutor<T> {
         campaignsReferences: Set<String>,
         scenariosNames: Set<String>,
         actualBoundParameters: MutableMap<String, BoundParameter>,
-        nextParameterIndex: Int
+        nextParameterIndex: Int,
+        dataType: DataType? = null
     ): StringBuilder {
         var nextIdentifier = "$${nextParameterIndex}"
         actualBoundParameters[nextIdentifier] =
@@ -45,6 +46,8 @@ internal abstract class AbstractQueryExecutor<T> {
             actualBoundParameters[nextIdentifier] =
                 RawBoundParameter(scenariosNames.toTypedArray(), nextIdentifier)
             additionalClauses.append(" AND scenario = any (array[${nextIdentifier}])")
+        } else if (dataType == DataType.METER) {
+            additionalClauses.append(" AND scenario IS NULL")
         }
         return additionalClauses
     }

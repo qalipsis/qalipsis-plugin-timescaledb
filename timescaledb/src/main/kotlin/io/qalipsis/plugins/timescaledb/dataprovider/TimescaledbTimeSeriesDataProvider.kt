@@ -76,7 +76,8 @@ internal class TimescaledbTimeSeriesDataProvider(
         context,
         query.aggregationStatement,
         query.aggregationBoundParameters,
-        query.nextAvailableAggregationParameterIdentifierIndex
+        query.nextAvailableAggregationParameterIdentifierIndex,
+        query.dataType
     )
 
     override suspend fun retrieveRecords(
@@ -128,7 +129,8 @@ internal class TimescaledbTimeSeriesDataProvider(
         query.countStatement,
         query.retrievalStatement,
         query.retrievalBoundParameters,
-        query.nextAvailableRetrievalParameterIdentifierIndex
+        query.nextAvailableRetrievalParameterIdentifierIndex,
+        query.dataType
     )
 
     private suspend fun <T> prepareAndExecuteConcurrentQueries(

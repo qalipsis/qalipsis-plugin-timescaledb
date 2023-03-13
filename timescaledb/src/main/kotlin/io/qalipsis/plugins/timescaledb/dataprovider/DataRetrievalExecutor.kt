@@ -51,7 +51,8 @@ internal class DataRetrievalExecutor(
     private val countStatement: String,
     private val selectStatement: String,
     private val boundParameters: Map<String, BoundParameter>,
-    private val nextParameterIndex: Int
+    private val nextParameterIndex: Int,
+    private val dataType: DataType? = null
 ) : AbstractQueryExecutor<Page<TimeSeriesRecord>>() {
 
     override suspend fun execute(): Page<TimeSeriesRecord> {
@@ -63,7 +64,8 @@ internal class DataRetrievalExecutor(
             campaignsReferences = context.campaignsReferences,
             scenariosNames = context.scenariosNames,
             actualBoundParameters = actualBoundParameters,
-            nextParameterIndex = nextParameterIndex
+            nextParameterIndex = nextParameterIndex,
+            dataType = dataType
         )
 
         val completedSelectStatement =

@@ -105,7 +105,7 @@ internal class TimescaledbMeterRegistry(
     @KTestable
     private fun doPublish(timescaledbMeters: List<TimescaledbMeter>) {
         if (log.isTraceEnabled) {
-            log.debug {
+            log.trace {
                 "Meters to publish: ${
                     timescaledbMeters.joinToString(
                         prefix = "\n\t",
@@ -117,10 +117,12 @@ internal class TimescaledbMeterRegistry(
             log.debug { "${timescaledbMeters.size} meters are to be published" }
         }
         tryAndLogOrNull(log) {
+            val metersNames = mutableListOf<String>()
             datasource.connection.use { connection ->
                 val results = connection.prepareStatement(sqlInsertStatement).use { statement ->
                     var bindIndex: Int
                     timescaledbMeters.forEach { meters ->
+                        metersNames += meters.name
                         bindIndex = 1
                         statement.setString(bindIndex++, meters.name)
                         statement.setStringOrNull(bindIndex++, meters.tags)
@@ -143,8 +145,16 @@ internal class TimescaledbMeterRegistry(
                     }
                     statement.executeBatch()
                 }
-                val updatedRows = results.count { it >= 1 }
-                log.debug { "$updatedRows meters were successfully published" }
+                if (log.isTraceEnabled) {
+                    val updatedByMeterName =
+                        metersNames.mapIndexed { index, meterName -> "${meterName}->${results[index]}" }.joinToString()
+                    log.trace { "Result of the saving: $updatedByMeterName" }
+                } else {
+                    log.debug {
+                        val updatedRows = results.count { it >= 1 }
+                        "$updatedRows meters were successfully saved"
+                    }
+                }
             }
         }
     }
