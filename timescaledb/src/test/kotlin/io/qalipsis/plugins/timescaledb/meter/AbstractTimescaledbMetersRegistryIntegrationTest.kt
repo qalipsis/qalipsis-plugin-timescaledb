@@ -35,10 +35,10 @@ import io.r2dbc.pool.ConnectionPoolConfiguration
 import io.r2dbc.postgresql.PostgresqlConnectionConfiguration
 import io.r2dbc.postgresql.PostgresqlConnectionFactory
 import io.r2dbc.postgresql.codec.Json
+import io.r2dbc.spi.Connection
 import jakarta.inject.Inject
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.reactive.awaitLast
-import org.junit.jupiter.api.AfterEach
 import org.junit.jupiter.api.BeforeAll
 import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.Timeout
@@ -50,6 +50,7 @@ import java.sql.Timestamp
 import java.time.Duration
 import java.time.OffsetDateTime
 import java.util.concurrent.atomic.AtomicInteger
+import kotlin.concurrent.thread
 
 @Testcontainers
 @MicronautTest(environments = ["timescaledb"], startApplication = false)
@@ -62,7 +63,7 @@ internal abstract class AbstractTimescaledbMetersRegistryIntegrationTest : TestP
     protected val testDispatcherProvider = TestDispatcherProvider()
 
     @Inject
-    private lateinit var meterRegistry: TimescaledbMeterRegistry
+    private lateinit var meterRegistryFactory: TimescaledbMeterRegistryFactory
 
     private lateinit var connection: ConnectionPool
 
@@ -79,8 +80,10 @@ internal abstract class AbstractTimescaledbMetersRegistryIntegrationTest : TestP
             "meters.export.timescaledb.host" to "localhost",
             "meters.export.timescaledb.port" to "$dbPort",
             "meters.export.timescaledb.schema" to "meters",
-            "meters.export.timescaledb.step" to "1s",
-            "meters.export.timescaledb.batchSize" to "2"
+            "meters.export.timescaledb.step" to "3s",
+            "meters.export.timescaledb.batchSize" to "2",
+
+            "logging.level.io.qalipsis.plugins.timescaledb.meter" to "TRACE"
         )
     }
 
@@ -102,60 +105,61 @@ internal abstract class AbstractTimescaledbMetersRegistryIntegrationTest : TestP
         )
     }
 
-    @AfterEach
-    internal fun tearDown() {
-        meterRegistry.clear()
-    }
-
     @Test
-    @Timeout(20)
+    @Timeout(10)
     fun `should export data`() = testDispatcherProvider.run {
         // given
-        meterRegistry.timer("1-the-timer").apply {
-            record(Duration.ofMillis(12))
-            record(Duration.ofMillis(8))
-        }
-        meterRegistry.counter(
-            "2-the-counter",
-            "first-tag-key",
-            "first-tag-value",
-            "tenant",
-            "tenant-1",
-            "campaign",
-            "campaign-1",
-            "scenario",
-            "scenario-1"
-        ).apply {
-            increment(8.80)
-            increment(2.40)
-        }
-        meterRegistry.summary(
-            "3-the-summary",
-            "summary-tag",
-            "summary-value",
-            "tenant",
-            "tenant-2",
-            "campaign",
-            "campaign-2",
-            "scenario",
-            "scenario-2"
-        ).apply {
-            record(130.60)
-            record(110.40)
-            record(90.20)
-        }
-        meterRegistry.gauge(
-            "4-the-gauge",
-            listOf(
-                Tag.of("gauge-tag", "gauge-value"),
-                Tag.of("tenant", "tenant-3"),
-                Tag.of("campaign", "campaign-3"),
-                Tag.of("scenario", "scenario-3")
-            ),
-            AtomicInteger(13)
-        )!!.apply {
-            incrementAndGet()
-            addAndGet(6)
+        val meterRegistry = meterRegistryFactory.timescaleRegistry()
+        thread(start = true) {
+            val gauge = meterRegistry.gauge(
+                "4-the-gauge",
+                listOf(
+                    Tag.of("gauge-tag", "gauge-value"),
+                    Tag.of("tenant", "tenant-3"),
+                    Tag.of("campaign", "campaign-3"),
+                    Tag.of("scenario", "scenario-3")
+                ),
+                AtomicInteger(0)
+            )!!
+            meterRegistry.timer("1-the-timer").apply {
+                record(Duration.ofMillis(12))
+                record(Duration.ofMillis(8))
+            }
+            meterRegistry.counter(
+                "2-the-counter",
+                "first-tag-key",
+                "first-tag-value",
+                "tenant",
+                "tenant-1",
+                "campaign",
+                "campaign-1",
+                "scenario",
+                "scenario-1"
+            ).apply {
+                increment(8.80)
+                increment(2.40)
+            }
+            meterRegistry.summary(
+                "3-the-summary",
+                "summary-tag",
+                "summary-value",
+                "tenant",
+                "tenant-2",
+                "campaign",
+                "campaign-2",
+                "scenario",
+                "scenario-2"
+            ).apply {
+                record(130.60)
+                record(110.40)
+                record(90.20)
+            }
+
+
+            // The delay ensures that the gauge is properly published.
+            Thread.sleep(1000L)
+            gauge.incrementAndGet()
+            gauge.addAndGet(19)
         }
 
         // when
@@ -163,7 +167,7 @@ internal abstract class AbstractTimescaledbMetersRegistryIntegrationTest : TestP
             delay(500)
             val recordsCounts =
                 executeSelect("select name, count(*) from meters where count > 0 or value > 2 group by name order by name")
-            logger().info { "Found meters: ${recordsCounts.joinToString { it["name"] as String }}" }
+            log.info { "Found meters: ${recordsCounts.joinToString { it["name"] as String }}" }
         } while (recordsCounts.size < 4) // One count by meter is expected.
         meterRegistry.stop()
 
@@ -248,12 +252,16 @@ internal abstract class AbstractTimescaledbMetersRegistryIntegrationTest : TestP
     }
 
     private suspend fun executeSelect(statement: String): List<Map<String, *>> {
-        return connection.create()
-            .flatMap { connection ->
+        return Mono.usingWhen(
+            connection.create(),
+            { connection ->
                 Mono.from(connection.createStatement(statement).execute())
-            }.flatMapMany { result ->
-                result.map { row, rowMetadata -> rowMetadata.columnMetadatas.associate { it.name to row[it.name] } }
-            }.collectList().awaitLast()
+            },
+            Connection::close
+        ).flatMapMany { result ->
+            log.info { "Mapping the result" }
+            result.map { row, rowMetadata -> rowMetadata.columnMetadatas.associate { it.name to row[it.name] } }
+        }.collectList().awaitLast()
     }
 
     companion object {
@@ -272,6 +280,8 @@ internal abstract class AbstractTimescaledbMetersRegistryIntegrationTest : TestP
          * Default password.
          */
         const val PASSWORD = "qalipsis-pwd"
+
+        val log = logger()
 
     }
 }

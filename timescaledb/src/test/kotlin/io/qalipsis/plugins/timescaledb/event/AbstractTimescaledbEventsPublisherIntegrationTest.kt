@@ -37,6 +37,7 @@ import io.qalipsis.test.mockk.relaxedMockk
 import io.r2dbc.postgresql.PostgresqlConnectionConfiguration
 import io.r2dbc.postgresql.PostgresqlConnectionFactory
 import io.r2dbc.postgresql.codec.Json
+import io.r2dbc.spi.Connection
 import jakarta.inject.Inject
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.toList
@@ -47,6 +48,7 @@ import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.Timeout
 import org.junit.jupiter.api.extension.RegisterExtension
 import org.testcontainers.junit.jupiter.Testcontainers
+import reactor.core.publisher.Flux
 import reactor.core.publisher.Mono
 import java.io.PrintWriter
 import java.math.BigDecimal
@@ -94,10 +96,13 @@ internal abstract class AbstractTimescaledbEventsPublisherIntegrationTest {
 
     @AfterEach
     fun tearDown() {
-        connection.create()
-            .flatMap { connection ->
+        Mono.usingWhen(
+            connection.create(),
+            { connection ->
                 Mono.from(connection.createStatement("truncate table events").execute())
-            }.block()
+            },
+            Connection::close
+        ).block()
     }
 
     @Test
@@ -259,12 +264,16 @@ internal abstract class AbstractTimescaledbEventsPublisherIntegrationTest {
     }
 
     private suspend fun executeSelect(statement: String): List<Map<String, *>> {
-        return connection.create()
-            .flatMapMany { connection ->
-                connection.createStatement(statement).execute()
-            }.flatMap { result ->
-                result.map { row, rowMetadata -> rowMetadata.columnMetadatas.associate { it.name to row[it.name] } }
-            }.asFlow().toList(mutableListOf<Map<String, *>>())
+        return Flux.usingWhen(
+            connection.create(),
+            { connection ->
+                Flux.from(connection.createStatement(statement).execute())
+                    .flatMap { result ->
+                        result.map { row, rowMetadata -> rowMetadata.columnMetadatas.associate { it.name to row[it.name] } }
+                    }
+            },
+            Connection::close
+        ).asFlow().toList(mutableListOf<Map<String, *>>())
     }
 
     data class MyTestObject(val property1: Double = 1243.65, val property2: String = "here is the test")

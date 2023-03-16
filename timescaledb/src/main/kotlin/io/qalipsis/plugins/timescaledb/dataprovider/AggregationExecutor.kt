@@ -46,7 +46,8 @@ internal class AggregationExecutor(
     private val context: AggregationQueryExecutionContext,
     private val statement: String,
     private val boundParameters: Map<String, BoundParameter>,
-    private val nextParameterIndex: Int
+    private val nextParameterIndex: Int,
+    private val dataType: DataType? = null
 ) : AbstractQueryExecutor<List<TimeSeriesAggregationResult>>() {
 
     override suspend fun execute(): List<TimeSeriesAggregationResult> {
@@ -58,7 +59,8 @@ internal class AggregationExecutor(
             campaignsReferences = context.campaignsReferences,
             scenariosNames = context.scenariosNames,
             actualBoundParameters = actualBoundParameters,
-            nextParameterIndex = nextParameterIndex
+            nextParameterIndex = nextParameterIndex,
+            dataType = dataType
         )
 
         val sqlStatement =

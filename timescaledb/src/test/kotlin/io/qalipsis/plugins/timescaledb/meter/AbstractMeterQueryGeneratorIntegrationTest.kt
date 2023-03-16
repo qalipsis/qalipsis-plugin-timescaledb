@@ -18,7 +18,22 @@ package io.qalipsis.plugins.timescaledb.meter
 
 import assertk.all
 import assertk.assertThat
-import assertk.assertions.*
+import assertk.assertions.each
+import assertk.assertions.hasSize
+import assertk.assertions.index
+import assertk.assertions.isBetween
+import assertk.assertions.isEmpty
+import assertk.assertions.isEqualTo
+import assertk.assertions.isGreaterThan
+import assertk.assertions.isIn
+import assertk.assertions.isInstanceOf
+import assertk.assertions.isLessThan
+import assertk.assertions.isNotEqualTo
+import assertk.assertions.isNotIn
+import assertk.assertions.isNotNull
+import assertk.assertions.isStrictlyBetween
+import assertk.assertions.key
+import assertk.assertions.prop
 import io.micronaut.test.extensions.junit5.annotation.MicronautTest
 import io.micronaut.test.support.TestPropertyProvider
 import io.qalipsis.api.logging.LoggerHelper.logger
@@ -174,6 +189,15 @@ internal abstract class AbstractMeterQueryGeneratorIntegrationTest : TestPropert
                         timestamp = Timestamp.from(currentMeterTimestamp),
                         type = "gauge",
                         value = value.toBigDecimal(),
+                    ),
+                    TimescaledbMeter(
+                        name = "my-meter-1",
+                        tenant = "tenant-1",
+                        campaign = "my-campaign-3",
+                        tags = """{"value-tag": "$value","tenant-tag":"tenant-1","campaign-tag":"my-campaign-3"}""",
+                        timestamp = Timestamp.from(currentMeterTimestamp),
+                        type = "gauge",
+                        value = value.toBigDecimal(),
                     )
                 )
             }
@@ -224,6 +248,15 @@ internal abstract class AbstractMeterQueryGeneratorIntegrationTest : TestPropert
                         campaign = "my-campaign-1",
                         scenario = "my-scenario-1",
                         tags = """{"value-tag": "$value","tenant-tag":"default-tenant","scenario-tag":"my-scenario-1"}""",
+                        timestamp = Timestamp.from(currentMeterTimestamp),
+                        type = "gauge",
+                        value = value.toBigDecimal(),
+                    ),
+                    TimescaledbMeter(
+                        name = "my-meter-1",
+                        tenant = "default-tenant",
+                        campaign = "my-campaign-3",
+                        tags = """{"value-tag": "$value","tenant-tag":"default-tenant","campaign-tag":"my-campaign-3"}""",
                         timestamp = Timestamp.from(currentMeterTimestamp),
                         type = "gauge",
                         value = value.toBigDecimal(),
@@ -332,6 +365,55 @@ internal abstract class AbstractMeterQueryGeneratorIntegrationTest : TestPropert
             }
 
         @Test
+        internal fun `should fetch the values in the expected tenant when scenario names set is empty`() =
+            testDispatcherProvider.run {
+                // given
+                val query = QueryDescription(
+                    QueryClause("name", QueryClauseOperator.IS, "my-meter-1")
+                )
+                val queryForTenant1 = meterQueryGenerator.prepareQueries("tenant-1", query)
+                var result = executeSelect(
+                    coroutineScope = this,
+                    query = queryForTenant1,
+                    start = Instant.EPOCH,
+                    end = start + Duration.ofHours(3),
+                    campaigns = setOf("my-campaign-3"),
+                    scenariosNames = emptySet()
+                )
+
+                // then
+                assertThat(result.elements).all {
+                    hasSize(12)
+                    each {
+                        it.isInstanceOf(TimeSeriesMeter::class).all {
+                            prop(TimeSeriesMeter::name).isEqualTo("my-meter-1")
+                            prop(TimeSeriesMeter::value).isNotNull()
+                            prop(TimeSeriesMeter::tags).isNotNull().key("tenant-tag").isEqualTo("tenant-1")
+                        }
+                    }
+                }
+
+                // when the tenant is tenant-2
+                val queryForTenant2 = meterQueryGenerator.prepareQueries("tenant-2", query)
+                result = executeSelect(
+                    coroutineScope = this,
+                    query = queryForTenant2,
+                    start = Instant.EPOCH,
+                    end = start + Duration.ofHours(3),
+                    campaigns = setOf("my-campaign-3"),
+                    scenariosNames = emptySet()
+                )
+
+                // then
+                assertThat(result).all {
+                    prop(Page<*>::elements).isEmpty()
+                    prop(Page<*>::totalElements).isEqualTo(0)
+                    prop(Page<*>::totalPages).isEqualTo(0)
+                    prop(Page<*>::page).isEqualTo(0)
+                }
+            }
+
+        @Test
         internal fun `should fetch the values in the default tenant`() =
             testDispatcherProvider.run {
                 // given
@@ -359,9 +441,11 @@ internal abstract class AbstractMeterQueryGeneratorIntegrationTest : TestPropert
                 }
 
                 // when all the meters "my-meter-2" of tenant-1 are selected.
-                val query2ForDefaultTenant = meterQueryGenerator.prepareQueries(null, QueryDescription(
-                    QueryClause("name", QueryClauseOperator.IS, "my-meter-2")
-                ))
+                val query2ForDefaultTenant = meterQueryGenerator.prepareQueries(
+                    null, QueryDescription(
+                        QueryClause("name", QueryClauseOperator.IS, "my-meter-2")
+                    )
+                )
                 result = executeSelect(
                     coroutineScope = this,
                     query = query2ForDefaultTenant,
@@ -383,11 +467,65 @@ internal abstract class AbstractMeterQueryGeneratorIntegrationTest : TestPropert
             }
 
         @Test
+        internal fun `should fetch the values in the default tenant when scenario names set is empty`() =
+            testDispatcherProvider.run {
+                // given
+                val query = QueryDescription(
+                    QueryClause("name", QueryClauseOperator.IS, "my-meter-1")
+                )
+                val query1ForDefaultTenant = meterQueryGenerator.prepareQueries(null, query)
+                var result = executeSelect(
+                    coroutineScope = this,
+                    query = query1ForDefaultTenant,
+                    start = Instant.EPOCH,
+                    end = start + Duration.ofHours(3),
+                    campaigns = setOf("my-campaign-3"),
+                    scenariosNames = emptySet()
+                )
+
+                // then
+                assertThat(result.elements).all {
+                    hasSize(12)
+                    each {
+                        it.isInstanceOf(TimeSeriesMeter::class).all {
+                            prop(TimeSeriesMeter::name).isEqualTo("my-meter-1")
+                            prop(TimeSeriesMeter::value).isNotNull()
+                            prop(TimeSeriesMeter::tags).isNotNull().key("tenant-tag").isEqualTo("default-tenant")
+                        }
+                    }
+                }
+
+                // when all the meters "my-meter-2" of default-tenant are selected.
+                val query2ForDefaultTenant = meterQueryGenerator.prepareQueries(
+                    null, QueryDescription(
+                        QueryClause("name", QueryClauseOperator.IS, "my-meter-2")
+                    )
+                )
+                result = executeSelect(
+                    coroutineScope = this,
+                    query = query2ForDefaultTenant,
+                    start = Instant.EPOCH,
+                    end = start + Duration.ofHours(3),
+                    campaigns = setOf("my-campaign-3"),
+                    scenariosNames = emptySet()
+                )
+
+                // then
+                assertThat(result).all {
+                    prop(Page<*>::elements).isEmpty()
+                    prop(Page<*>::totalElements).isEqualTo(0)
+                    prop(Page<*>::totalPages).isEqualTo(0)
+                    prop(Page<*>::page).isEqualTo(0)
+                }
+            }
+
+        @Test
         internal fun `should fetch the values in the expected name`() =
             testDispatcherProvider.run {
                 // given
                 val queryForMeter1 = meterQueryGenerator.prepareQueries(
-                    "tenant-1", QueryDescription(QueryClause("name", QueryClauseOperator.IS, "my-meter-1"))
+                    "tenant-1",
+                    QueryDescription(QueryClause("name", QueryClauseOperator.IS, "my-meter-1"))
                 )
                 var result = executeSelect(
                     coroutineScope = this,
@@ -410,7 +548,8 @@ internal abstract class AbstractMeterQueryGeneratorIntegrationTest : TestPropert
 
                 // when all the meters "my-meter-2" of tenant-1 are selected.
                 val queryForMeter2 = meterQueryGenerator.prepareQueries(
-                    "tenant-1", QueryDescription(QueryClause("name", QueryClauseOperator.IS, "my-meter-2"))
+                    "tenant-1",
+                    QueryDescription(QueryClause("name", QueryClauseOperator.IS, "my-meter-2"))
                 )
                 result = executeSelect(
                     coroutineScope = this,
@@ -1446,17 +1585,91 @@ internal abstract class AbstractMeterQueryGeneratorIntegrationTest : TestPropert
         }
 
         @Test
+        internal fun `should calculate the min values when scenario names set is empty`() = testDispatcherProvider.run {
+            // given
+            val query = meterQueryGenerator.prepareQueries(
+                "tenant-1", QueryDescription(
+                    filters = listOf(QueryClause("name", QueryClauseOperator.IS, "my-meter-1")),
+                    fieldName = "value",
+                    aggregationOperation = QueryAggregationOperator.MIN,
+                    timeframeUnit = Duration.ofSeconds(2)
+                )
+            )
+            val result = executeAggregation(
+                query = query,
+                start = start,
+                end = latestTimestamp - timeStep,
+                campaigns = setOf("my-campaign-3"),
+                scenariosNames = emptySet()
+            )
+
+            // then
+            assertThat(result).all {
+                hasSize(3)
+                index(0).all {
+                    prop(TimeSeriesAggregationResult::start).isEqualTo(start)
+                    prop(TimeSeriesAggregationResult::value).isNotNull().transform { it.toDouble() }.isEqualTo(2.0)
+                }
+                index(1).all {
+                    prop(TimeSeriesAggregationResult::start).isEqualTo(start + Duration.ofSeconds(2))
+                    prop(TimeSeriesAggregationResult::value).isNotNull().transform { it.toDouble() }.isEqualTo(13.0)
+                }
+                index(2).all {
+                    prop(TimeSeriesAggregationResult::start).isEqualTo(start + Duration.ofSeconds(4))
+                    prop(TimeSeriesAggregationResult::value).isNotNull().transform { it.toDouble() }.isEqualTo(89.0)
+                }
+            }
+        }
+
+        @Test
         internal fun `should calculate the max values`() = testDispatcherProvider.run {
             // given
             val query = meterQueryGenerator.prepareQueries(
                 "tenant-1", QueryDescription(
                     filters = listOf(QueryClause("name", QueryClauseOperator.IS, "my-meter-1")),
                     fieldName = "value",
-                    aggregationOperation = QueryAggregationOperator.MAX,
+                    aggregationOperation = MAX,
                     timeframeUnit = Duration.ofSeconds(2)
                 )
             )
             val result = executeAggregation(query, start, latestTimestamp - timeStep)
+
+            // then
+            assertThat(result).all {
+                hasSize(3)
+                index(0).all {
+                    prop(TimeSeriesAggregationResult::start).isEqualTo(start)
+                    prop(TimeSeriesAggregationResult::value).isNotNull().transform { it.toDouble() }.isEqualTo(8.0)
+                }
+                index(1).all {
+                    prop(TimeSeriesAggregationResult::start).isEqualTo(start + Duration.ofSeconds(2))
+                    prop(TimeSeriesAggregationResult::value).isNotNull().transform { it.toDouble() }.isEqualTo(55.0)
+                }
+                index(2).all {
+                    prop(TimeSeriesAggregationResult::start).isEqualTo(start + Duration.ofSeconds(4))
+                    prop(TimeSeriesAggregationResult::value).isNotNull().transform { it.toDouble() }.isEqualTo(233.0)
+                }
+            }
+        }
+
+        @Test
+        internal fun `should calculate the max values when scenario names set is empty`() = testDispatcherProvider.run {
+            // given
+            val query = meterQueryGenerator.prepareQueries(
+                "tenant-1", QueryDescription(
+                    filters = listOf(QueryClause("name", QueryClauseOperator.IS, "my-meter-1")),
+                    fieldName = "value",
+                    aggregationOperation = MAX,
+                    timeframeUnit = Duration.ofSeconds(2)
+                )
+            )
+            val result = executeAggregation(
+                query = query,
+                start = start,
+                end = latestTimestamp - timeStep,
+                campaigns = setOf("my-campaign-3"),
+                scenariosNames = emptySet()
+            )
 
             // then
             assertThat(result).all {
@@ -1488,6 +1701,43 @@ internal abstract class AbstractMeterQueryGeneratorIntegrationTest : TestPropert
                 )
             )
             val result = executeAggregation(query, start, latestTimestamp - timeStep)
+
+            // then
+            assertThat(result).all {
+                hasSize(3)
+                index(0).all {
+                    prop(TimeSeriesAggregationResult::start).isEqualTo(start)
+                    prop(TimeSeriesAggregationResult::value).isNotNull().transform { it.toDouble() }.isEqualTo(18.0)
+                }
+                index(1).all {
+                    prop(TimeSeriesAggregationResult::start).isEqualTo(start + Duration.ofSeconds(2))
+                    prop(TimeSeriesAggregationResult::value).isNotNull().transform { it.toDouble() }.isEqualTo(123.0)
+                }
+                index(2).all {
+                    prop(TimeSeriesAggregationResult::start).isEqualTo(start + Duration.ofSeconds(4))
+                    prop(TimeSeriesAggregationResult::value).isNotNull().transform { it.toDouble() }.isEqualTo(466.0)
+                }
+            }
+        }
+
+        @Test
+        internal fun `should calculate the sum values when scenario names set is empty`() = testDispatcherProvider.run {
+            // given
+            val query = meterQueryGenerator.prepareQueries(
+                "tenant-1", QueryDescription(
+                    filters = listOf(QueryClause("name", QueryClauseOperator.IS, "my-meter-1")),
+                    fieldName = "value",
+                    aggregationOperation = QueryAggregationOperator.SUM,
+                    timeframeUnit = Duration.ofSeconds(2)
+                )
+            )
+            val result = executeAggregation(
+                query = query,
+                start = start,
+                end = latestTimestamp - timeStep,
+                campaigns = setOf("my-campaign-3"),
+                scenariosNames = emptySet()
+            )
 
             // then
             assertThat(result).all {
@@ -1819,6 +2069,42 @@ internal abstract class AbstractMeterQueryGeneratorIntegrationTest : TestPropert
                     }
                 }
             }
+
+        @Test
+        internal fun `should aggregate only meters without scenarios`() = testDispatcherProvider.run {
+            // given"
+            val query = meterQueryGenerator.prepareQueries(
+                "tenant-1",
+                QueryDescription(aggregationOperation = QueryAggregationOperator.COUNT)
+            )
+            val result = executeAggregation(
+                query = query,
+                start = start,
+                end = latestTimestamp + Duration.ofSeconds(3),
+                campaigns = setOf("my-campaign-3"),
+                scenariosNames = emptySet()
+            )
+
+            // then
+            assertThat(result).all {
+                hasSize(3)
+                index(0).all {
+                    prop(TimeSeriesAggregationResult::start).isEqualTo(start)
+                    prop(TimeSeriesAggregationResult::campaign).isEqualTo("my-campaign-3")
+                    prop(TimeSeriesAggregationResult::value).isNotNull().transform { it.toDouble() }.isEqualTo(4.0)
+                }
+                index(1).all {
+                    prop(TimeSeriesAggregationResult::start).isEqualTo(start + Duration.ofSeconds(2))
+                    prop(TimeSeriesAggregationResult::campaign).isEqualTo("my-campaign-3")
+                    prop(TimeSeriesAggregationResult::value).isNotNull().transform { it.toDouble() }.isEqualTo(4.0)
+                }
+                index(2).all {
+                    prop(TimeSeriesAggregationResult::start).isEqualTo(start + Duration.ofSeconds(4))
+                    prop(TimeSeriesAggregationResult::campaign).isEqualTo("my-campaign-3")
+                    prop(TimeSeriesAggregationResult::value).isNotNull().transform { it.toDouble() }.isEqualTo(3.0)
+                }
+            }
+        }
     }
 
     protected open suspend fun executeSelect(
@@ -1851,7 +2137,8 @@ internal abstract class AbstractMeterQueryGeneratorIntegrationTest : TestPropert
             query.countStatement,
             query.retrievalStatement,
             query.retrievalBoundParameters,
-            query.nextAvailableRetrievalParameterIdentifierIndex
+            query.nextAvailableRetrievalParameterIdentifierIndex,
+            query.dataType
         ).execute()
     }
 
@@ -1875,7 +2162,8 @@ internal abstract class AbstractMeterQueryGeneratorIntegrationTest : TestPropert
             ),
             query.aggregationStatement,
             query.aggregationBoundParameters,
-            query.nextAvailableAggregationParameterIdentifierIndex
+            query.nextAvailableAggregationParameterIdentifierIndex,
+            query.dataType
         ).execute()
     }
 
