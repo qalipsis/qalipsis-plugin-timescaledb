@@ -17,6 +17,8 @@
 rootProject.name = "qalipsis-plugins-timescaledb"
 
 include(
-    "timescaledb"
+    "qalipsis-plugin-timescaledb"
 )
+
+project(":qalipsis-plugin-timescaledb").projectDir = File(rootDir, "timescaledb")
 
