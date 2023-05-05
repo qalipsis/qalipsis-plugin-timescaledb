@@ -80,4 +80,10 @@ interface TimescaledbEventsPublisherConfiguration {
 
     @get:NotBlank
     val password: String
+
+    /**
+     * Specifies whether the schema for the meters should be created or updated at startup.
+     */
+    @get:Bindable(defaultValue = "true")
+    val initSchema: Boolean
 }

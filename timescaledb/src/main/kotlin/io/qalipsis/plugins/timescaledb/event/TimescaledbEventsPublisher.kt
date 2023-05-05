@@ -63,7 +63,7 @@ internal class TimescaledbEventsPublisher(
 
     private lateinit var executors: ExecutorService
 
-    private var schemaCreated = false
+    private var schemaCreated = !configuration.initSchema
 
     override fun start() {
         createOrUpdateSchemaIfRequired()

@@ -43,7 +43,7 @@ internal class TimescaledbMeterRegistry(
 
     private val sqlInsertStatement = String.format(SQL, "${config.schema()}.meters")
 
-    private var schemaInitialized = false
+    private var schemaInitialized = !config.initSchema()
 
     init {
         if (config.autostart() || config.autoconnect()) {

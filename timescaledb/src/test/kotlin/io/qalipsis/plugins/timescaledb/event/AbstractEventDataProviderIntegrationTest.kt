@@ -95,6 +95,7 @@ internal abstract class AbstractEventDataProviderIntegrationTest : TestPropertyP
             every { lingerPeriod } returns Duration.ofNanos(1)
             every { batchSize } returns 2000
             every { publishers } returns 1
+            every { initSchema } returns true
         }
 
         publisher =

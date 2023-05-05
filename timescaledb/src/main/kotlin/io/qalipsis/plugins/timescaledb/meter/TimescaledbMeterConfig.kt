@@ -72,6 +72,13 @@ abstract class TimescaledbMeterConfig : StepRegistryConfig {
     }
 
     /**
+     * Specifies whether the schema for the meters should be created or updated at startup.
+     */
+    fun initSchema(): Boolean {
+        return PropertyValidator.getBoolean(this, "init-schema").orElse(true)
+    }
+
+    /**
      * The name of the timestamp field. Default is: "timestamp"
      *
      * @return field name for timestamp

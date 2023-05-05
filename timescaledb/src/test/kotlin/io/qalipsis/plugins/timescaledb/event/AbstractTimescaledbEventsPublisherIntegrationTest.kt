@@ -120,6 +120,7 @@ internal abstract class AbstractTimescaledbEventsPublisherIntegrationTest {
             every { lingerPeriod } returns Duration.ofNanos(1)
             every { batchSize } returns 2000
             every { publishers } returns 1
+            every { initSchema } returns true
         }
         val publisher = TimescaledbEventsPublisher(this, configuration, eventsConverter)
         publisher.start()
@@ -236,6 +237,7 @@ internal abstract class AbstractTimescaledbEventsPublisherIntegrationTest {
             every { lingerPeriod } returns Duration.ofSeconds(2)
             every { batchSize } returns 10_000
             every { publishers } returns 5
+            every { initSchema } returns true
         }
         val publisher = TimescaledbEventsPublisher(this, configuration, eventsConverter)
         publisher.start()
