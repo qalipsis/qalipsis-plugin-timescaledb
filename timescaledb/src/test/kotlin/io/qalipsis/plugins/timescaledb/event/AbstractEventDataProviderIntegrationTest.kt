@@ -290,7 +290,7 @@ internal abstract class AbstractEventDataProviderIntegrationTest : TestPropertyP
         )
 
         // when
-        val allTagsOfTenant1 = eventDataProvider.searchTagsAndValues("tenant-1", emptySet(), 200)
+        val allTagsOfTenant1 = eventDataProvider.searchTagsAndValues("tenant-1", null, emptySet(), 200)
 
         // then
         assertThat(allTagsOfTenant1).all {
@@ -310,7 +310,7 @@ internal abstract class AbstractEventDataProviderIntegrationTest : TestPropertyP
         }
 
         // when
-        val allTagsOfTenant2 = eventDataProvider.searchTagsAndValues("tenant-2", emptySet(), 200)
+        val allTagsOfTenant2 = eventDataProvider.searchTagsAndValues("tenant-2", null, emptySet(), 200)
 
         // then
         assertThat(allTagsOfTenant2).all {
@@ -319,7 +319,7 @@ internal abstract class AbstractEventDataProviderIntegrationTest : TestPropertyP
         }
 
         // when
-        val someTagsOfTenant1 = eventDataProvider.searchTagsAndValues("tenant-1", emptySet(), 2)
+        val someTagsOfTenant1 = eventDataProvider.searchTagsAndValues("tenant-1", null, emptySet(), 2)
 
         // then
         assertThat(someTagsOfTenant1).all {
@@ -380,7 +380,7 @@ internal abstract class AbstractEventDataProviderIntegrationTest : TestPropertyP
         )
 
         // when
-        var result = eventDataProvider.searchTagsAndValues("tenant-1", setOf("tag-?"), 200)
+        var result = eventDataProvider.searchTagsAndValues("tenant-1", null, setOf("tag-?"), 200)
 
         // then
         assertThat(result).all {
@@ -400,7 +400,7 @@ internal abstract class AbstractEventDataProviderIntegrationTest : TestPropertyP
         }
 
         // when
-        result = eventDataProvider.searchTagsAndValues("tenant-1", setOf("*-2"), 200)
+        result = eventDataProvider.searchTagsAndValues("tenant-1", null, setOf("*-2"), 200)
 
         // then
         assertThat(result).all {
@@ -410,7 +410,7 @@ internal abstract class AbstractEventDataProviderIntegrationTest : TestPropertyP
         }
 
         // when
-        result = eventDataProvider.searchTagsAndValues("tenant-1", setOf("*g-2"), 200)
+        result = eventDataProvider.searchTagsAndValues("tenant-1", null, setOf("*g-2"), 200)
 
         // then
         assertThat(result).all {
@@ -418,6 +418,86 @@ internal abstract class AbstractEventDataProviderIntegrationTest : TestPropertyP
             key("tag-2").containsOnly("value-2")
         }
 
+    }
+
+    @Test
+    @Timeout(10)
+    internal fun `should list the tags with filter and name`() = testDispatcherProvider.run {
+        // given
+        val name1 = RandomStringUtils.randomAlphabetic(5)
+        val name2 = RandomStringUtils.randomAlphabetic(5)
+        val name3 = RandomStringUtils.randomAlphabetic(5)
+        val name4 = RandomStringUtils.randomAlphabetic(5)
+        publisher.doPerformPublish(
+            listOf(
+                Event(
+                    name1,
+                    EventLevel.INFO,
+                    tags = listOf(
+                        EventTag("tenant", "tenant-1"),
+                        EventTag("campaign", "any"),
+                        EventTag("tag-1", "value-1")
+                    )
+                ),
+                Event(
+                    name2,
+                    EventLevel.INFO,
+                    tags = listOf(
+                        EventTag("tenant", "tenant-1"),
+                        EventTag("campaign", "any"),
+                        EventTag("tag-1", "value-1"),
+                        EventTag("tag-2", "value-2"),
+                        EventTag("tag-3", "")
+                    )
+                ),
+                Event(
+                    name3,
+                    EventLevel.INFO,
+                    tags = listOf(
+                        EventTag("tenant", "tenant-1"),
+                        EventTag("campaign", "campaign-1"),
+                        EventTag("scenario", "scenario-1"),
+                        EventTag("tag-1", "value-2"),
+                        EventTag("tag-2", "value-2"),
+                        EventTag("tag-3", "value-3")
+                    )
+                ),
+                Event(
+                    name4,
+                    EventLevel.WARN,
+                    tags = listOf(
+                        EventTag("tenant", "tenant-2"),
+                        EventTag("campaign", "any"),
+                        EventTag("tag-2", "value-3")
+                    )
+                )
+            )
+        )
+
+        // when
+        var result = eventDataProvider.searchTagsAndValues("tenant-1", name2, setOf("tag-?"), 200)
+
+        // then
+        assertThat(result).all {
+            hasSize(2)
+            key("tag-1").all {
+                hasSize(1)
+                containsOnly("value-1")
+            }
+            key("tag-2").all {
+                hasSize(1)
+                containsOnly("value-2")
+            }
+        }
+
+        // when
+        result = eventDataProvider.searchTagsAndValues("tenant-1", name2, setOf("*-2"), 200)
+
+        // then
+        assertThat(result).all {
+            hasSize(1)
+            key("tag-2").containsOnly("value-2")
+        }
     }
 
     companion object {
