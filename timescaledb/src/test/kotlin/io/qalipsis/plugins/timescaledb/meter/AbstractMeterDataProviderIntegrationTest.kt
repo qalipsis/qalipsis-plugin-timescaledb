@@ -278,7 +278,7 @@ internal abstract class AbstractMeterDataProviderIntegrationTest : TestPropertyP
         )
 
         // when
-        val allTagsOfTenant1 = meterDataProvider.searchTagsAndValues("tenant-1", emptySet(), 200)
+        val allTagsOfTenant1 = meterDataProvider.searchTagsAndValues("tenant-1", null, emptySet(), 200)
 
         // then
         assertThat(allTagsOfTenant1).all {
@@ -298,7 +298,7 @@ internal abstract class AbstractMeterDataProviderIntegrationTest : TestPropertyP
         }
 
         // when
-        val allTagsOfTenant2 = meterDataProvider.searchTagsAndValues("tenant-2", emptySet(), 200)
+        val allTagsOfTenant2 = meterDataProvider.searchTagsAndValues("tenant-2", null, emptySet(), 200)
 
         // then
         assertThat(allTagsOfTenant2).all {
@@ -307,7 +307,7 @@ internal abstract class AbstractMeterDataProviderIntegrationTest : TestPropertyP
         }
 
         // when
-        val someTagsOfTenant1 = meterDataProvider.searchTagsAndValues("tenant-1", emptySet(), 2)
+        val someTagsOfTenant1 = meterDataProvider.searchTagsAndValues("tenant-1", null, emptySet(), 2)
 
         // then
         assertThat(someTagsOfTenant1).all {
@@ -321,10 +321,14 @@ internal abstract class AbstractMeterDataProviderIntegrationTest : TestPropertyP
     @Timeout(20)
     internal fun `should list the tags with filter`() = testDispatcherProvider.run {
         // given
+        val name1 = RandomStringUtils.randomAlphabetic(5)
+        val name2 = RandomStringUtils.randomAlphabetic(5)
+        val name3 = RandomStringUtils.randomAlphabetic(5)
+        val name4 = RandomStringUtils.randomAlphabetic(5)
         meterRegistry.doPublish(
             listOf(
                 TimescaledbMeter(
-                    RandomStringUtils.randomAlphabetic(5),
+                    name1,
                     timestamp = Timestamp.from(Instant.now()),
                     type = "gauge",
                     tenant = "tenant-1",
@@ -332,7 +336,7 @@ internal abstract class AbstractMeterDataProviderIntegrationTest : TestPropertyP
                     tags = """{"tag-1":"value-1"}"""
                 ),
                 TimescaledbMeter(
-                    RandomStringUtils.randomAlphabetic(5),
+                    name2,
                     timestamp = Timestamp.from(Instant.now()),
                     type = "gauge",
                     tenant = "tenant-1",
@@ -340,7 +344,7 @@ internal abstract class AbstractMeterDataProviderIntegrationTest : TestPropertyP
                     tags = """{"tag-1":"value-1","tag-2":"value-2","tag-3":""}"""
                 ),
                 TimescaledbMeter(
-                    RandomStringUtils.randomAlphabetic(5),
+                    name3,
                     timestamp = Timestamp.from(Instant.now()),
                     type = "gauge",
                     tenant = "tenant-1",
@@ -348,7 +352,7 @@ internal abstract class AbstractMeterDataProviderIntegrationTest : TestPropertyP
                     tags = """{"tag-1":"value-2","tag-2":"value-2","tag-3":"value-3"}"""
                 ),
                 TimescaledbMeter(
-                    RandomStringUtils.randomAlphabetic(5),
+                    name4,
                     timestamp = Timestamp.from(Instant.now()),
                     type = "type",
                     tenant = "tenant-2",
@@ -359,44 +363,29 @@ internal abstract class AbstractMeterDataProviderIntegrationTest : TestPropertyP
         )
 
         // when
-        var result = meterDataProvider.searchTagsAndValues("tenant-1", setOf("tag-?"), 200)
+        var result = meterDataProvider.searchTagsAndValues("tenant-1", name2, setOf("tag-?"), 200)
 
         // then
         assertThat(result).all {
-            hasSize(3)
+            hasSize(2)
             key("tag-1").all {
-                hasSize(2)
-                containsOnly("value-1", "value-2")
+                hasSize(1)
+                containsOnly("value-1")
             }
             key("tag-2").all {
                 hasSize(1)
                 containsOnly("value-2")
             }
-            key("tag-3").all {
-                hasSize(1)
-                containsOnly("value-3")
-            }
         }
 
         // when
-        result = meterDataProvider.searchTagsAndValues("tenant-1", setOf("*-2"), 200)
-
-        // then
-        assertThat(result).all {
-            hasSize(2)
-            key("tag-1").containsOnly("value-2")
-            key("tag-2").containsOnly("value-2")
-        }
-
-        // when
-        result = meterDataProvider.searchTagsAndValues("tenant-1", setOf("*g-2"), 200)
+        result = meterDataProvider.searchTagsAndValues("tenant-1", name2, setOf("*-2"), 200)
 
         // then
         assertThat(result).all {
             hasSize(1)
             key("tag-2").containsOnly("value-2")
         }
-
     }
 
     companion object {

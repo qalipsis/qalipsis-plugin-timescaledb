@@ -40,10 +40,6 @@ import io.r2dbc.pool.ConnectionPool
 import io.r2dbc.postgresql.client.SSLMode
 import io.r2dbc.spi.Connection
 import jakarta.inject.Inject
-import java.sql.Timestamp
-import java.time.Duration
-import java.time.Instant
-import java.util.concurrent.TimeUnit
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
@@ -58,6 +54,10 @@ import org.junit.jupiter.api.extension.RegisterExtension
 import org.testcontainers.junit.jupiter.Testcontainers
 import reactor.core.publisher.Flux
 import reactor.core.publisher.Mono
+import java.sql.Timestamp
+import java.time.Duration
+import java.time.Instant
+import java.util.concurrent.TimeUnit
 
 /**
  * @author Joël Valère
@@ -296,6 +296,7 @@ internal abstract class AbstractTimescaledbTimeSeriesDataProviderIntegrationTest
                 every { lingerPeriod } returns Duration.ofNanos(1)
                 every { batchSize } returns 2000
                 every { publishers } returns 1
+                every { initSchema } returns true
             }
 
             publisher = TimescaledbEventsPublisher(

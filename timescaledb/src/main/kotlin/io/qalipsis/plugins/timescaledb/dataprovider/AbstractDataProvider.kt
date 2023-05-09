@@ -41,7 +41,7 @@ internal abstract class AbstractDataProvider(
         return objectMapper.writeValueAsString(queryGenerator.prepareQueries(tenant, query))
     }
 
-    suspend fun listFields(tenant: String): Collection<DataField> {
+    suspend fun listFields(tenant: String, name: String?): Collection<DataField> {
         return queryGenerator.queryFields
     }
 
@@ -70,17 +70,30 @@ internal abstract class AbstractDataProvider(
 
     suspend fun searchTagsAndValues(
         tenant: String,
+        name: String?,
         filters: Collection<String>,
         size: Int
     ): Map<String, Collection<String>> {
+        val params = mutableMapOf<String, Any>()
+        params["$1"] = tenant
+        params["$2"] = excludedTagsArray
         val sql =
             StringBuilder(
                 """SELECT tags.key AS KEY, STRING_AGG(DISTINCT(tags.value), ',' ORDER BY tags.value) AS value FROM $databaseTable AS e, lateral jsonb_each_text(tags) AS tags 
                 |WHERE "tenant" = $1 AND "campaign" IS NOT NULL AND tags.value <> ''""".trimMargin()
             )
         sql.append(""" AND tags.key <> all (array[$2])""")
+
+        var nextBindingIndex = 3
+        if (!name.isNullOrBlank()) {
+            val binding = "\$${nextBindingIndex++}"
+            params[binding] = name.trim()
+            sql.append(""" AND name = $binding""")
+        }
         if (filters.isNotEmpty()) {
-            sql.append(""" AND (tags.key ILIKE any (array[$3]) OR tags.value ILIKE any (array[$3]))""")
+            val binding = "\$${nextBindingIndex++}"
+            params[binding] = filters.map(this::convertWildcards).toTypedArray()
+            sql.append(""" AND (tags.key ILIKE any (array[$binding]) OR tags.value ILIKE any (array[$binding]))""")
         }
         sql.append(""" GROUP BY tags.key ORDER BY tags.key LIMIT $size""")
 
@@ -89,10 +102,9 @@ internal abstract class AbstractDataProvider(
             { connection ->
                 Flux.from(
                     connection.createStatement(sql.toString())
-                        .bind("$1", tenant).bind("$2", excludedTagsArray)
                         .also {
-                            if (filters.isNotEmpty()) {
-                                it.bind("$3", filters.map(this::convertWildcards).toTypedArray())
+                            params.forEach { (binding, value) ->
+                                it.bind(binding, value)
                             }
                         }.execute()
                 ).flatMap { result ->
