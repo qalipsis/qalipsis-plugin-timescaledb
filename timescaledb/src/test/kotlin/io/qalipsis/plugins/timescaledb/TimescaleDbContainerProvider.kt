@@ -35,11 +35,11 @@ internal class TimescaleDbContainerProvider : JdbcDatabaseContainerProvider() {
     override fun newInstance(tag: String): JdbcDatabaseContainer<*> {
         val dockerImageName = DockerImageName.parse(IMAGE).withTag(tag)
             .asCompatibleSubstituteFor(PostgreSQLContainer.IMAGE)
-        return TimescaleDbContainer<TimescaleDbContainer<*>>(dockerImageName)
+        return TimescaleDbContainer(dockerImageName)
     }
 
     fun newInstance(imageName: DockerImageName): JdbcDatabaseContainer<*> {
-        return TimescaleDbContainer<TimescaleDbContainer<*>>(imageName.asCompatibleSubstituteFor(PostgreSQLContainer.IMAGE))
+        return TimescaleDbContainer(imageName.asCompatibleSubstituteFor(PostgreSQLContainer.IMAGE))
     }
 
     override fun newInstance(connectionUrl: ConnectionUrl?): JdbcDatabaseContainer<*> {
