@@ -29,7 +29,6 @@ import io.micronaut.test.extensions.junit5.annotation.MicronautTest
 import io.micronaut.test.support.TestPropertyProvider
 import io.qalipsis.api.events.EventLevel
 import io.qalipsis.api.events.EventsPublisher
-import io.qalipsis.plugins.timescaledb.event.TimescaledbEventsPublisher
 import jakarta.inject.Inject
 import org.junit.jupiter.api.Nested
 import org.junit.jupiter.api.Test
