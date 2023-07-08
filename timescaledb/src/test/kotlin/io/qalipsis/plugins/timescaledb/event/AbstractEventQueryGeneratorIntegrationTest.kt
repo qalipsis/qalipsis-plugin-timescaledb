@@ -86,7 +86,7 @@ import java.time.temporal.ChronoUnit
 import java.util.concurrent.TimeUnit
 
 @Testcontainers
-@MicronautTest(startApplication = false, environments = ["standalone"], transactional=false)
+@MicronautTest(startApplication = false, environments = ["standalone"], transactional = false)
 @Timeout(20, unit = TimeUnit.SECONDS)
 internal abstract class AbstractEventQueryGeneratorIntegrationTest : TestPropertyProvider {
 
@@ -208,7 +208,7 @@ internal abstract class AbstractEventQueryGeneratorIntegrationTest : TestPropert
                         campaign = "my-campaign-2",
                         scenario = "my-scenario-1",
                         tags = """{"number-tag": "$number","tenant-tag":"tenant-1","campaign-tag":"my-campaign-2","scenario-tag":"my-scenario-1"}""",
-                        timestamp = Timestamp.from(currentEventTimestamp),
+                        timestamp = Timestamp.from(currentEventTimestamp.plusSeconds(3)),
                         number = number.toBigDecimal(),
                     )
                 )
@@ -1308,16 +1308,19 @@ internal abstract class AbstractEventQueryGeneratorIntegrationTest : TestPropert
                     index(0).all {
                         prop(TimeSeriesAggregationResult::start).isEqualTo(start)
                         prop(TimeSeriesAggregationResult::value).isNotNull().transform { it.toDouble() }.isEqualTo(4.5)
+                        prop(TimeSeriesAggregationResult::elapsed).isEqualTo(Duration.ZERO)
                     }
                     index(1).all {
                         prop(TimeSeriesAggregationResult::start).isEqualTo(start + Duration.ofSeconds(2))
                         prop(TimeSeriesAggregationResult::value).isNotNull().transform { it.toDouble() }
                             .isEqualTo(30.75)
+                        prop(TimeSeriesAggregationResult::elapsed).isEqualTo(Duration.ofSeconds(2))
                     }
                     index(2).all {
                         prop(TimeSeriesAggregationResult::start).isEqualTo(start + Duration.ofSeconds(4))
                         prop(TimeSeriesAggregationResult::value).isNotNull().transform { it.toDouble() }
                             .isEqualTo(155.0 + 1.0 / 3)
+                        prop(TimeSeriesAggregationResult::elapsed).isEqualTo(Duration.ofSeconds(4))
                     }
                 }
 
@@ -1334,20 +1337,24 @@ internal abstract class AbstractEventQueryGeneratorIntegrationTest : TestPropert
                     index(0).all {
                         prop(TimeSeriesAggregationResult::start).isEqualTo(start - Duration.ofSeconds(2))
                         prop(TimeSeriesAggregationResult::value).isNotNull().transform { it.toDouble() }.isEqualTo(1.0)
+                        prop(TimeSeriesAggregationResult::elapsed).isEqualTo(Duration.ZERO)
                     }
                     index(1).all {
                         prop(TimeSeriesAggregationResult::start).isEqualTo(start)
                         prop(TimeSeriesAggregationResult::value).isNotNull().transform { it.toDouble() }.isEqualTo(4.5)
+                        prop(TimeSeriesAggregationResult::elapsed).isEqualTo(Duration.ofSeconds(2))
                     }
                     index(2).all {
                         prop(TimeSeriesAggregationResult::start).isEqualTo(start + Duration.ofSeconds(2))
                         prop(TimeSeriesAggregationResult::value).isNotNull().transform { it.toDouble() }
                             .isEqualTo(30.75)
+                        prop(TimeSeriesAggregationResult::elapsed).isEqualTo(Duration.ofSeconds(4))
                     }
                     index(3).all {
                         prop(TimeSeriesAggregationResult::start).isEqualTo(start + Duration.ofSeconds(4))
                         prop(TimeSeriesAggregationResult::value).isNotNull().transform { it.toDouble() }
                             .isEqualTo(155.0 + 1.0 / 3)
+                        prop(TimeSeriesAggregationResult::elapsed).isEqualTo(Duration.ofSeconds(6))
                     }
                 }
 
@@ -1369,6 +1376,7 @@ internal abstract class AbstractEventQueryGeneratorIntegrationTest : TestPropert
                         prop(TimeSeriesAggregationResult::start).isEqualTo(start.truncatedTo(ChronoUnit.SECONDS))
                         prop(TimeSeriesAggregationResult::value).isNotNull().transform { it.toDouble() }
                             .isEqualTo(11.75)
+                        prop(TimeSeriesAggregationResult::elapsed).isEqualTo(Duration.ZERO)
                     }
                     index(1).all {
                         prop(TimeSeriesAggregationResult::start).isEqualTo(
@@ -1377,6 +1385,7 @@ internal abstract class AbstractEventQueryGeneratorIntegrationTest : TestPropert
                             )
                         )
                         prop(TimeSeriesAggregationResult::value).isNotNull().transform { it.toDouble() }.isEqualTo(80.5)
+                        prop(TimeSeriesAggregationResult::elapsed).isEqualTo(Duration.ofSeconds(2))
                     }
                     index(2).all {
                         prop(TimeSeriesAggregationResult::start).isEqualTo(
@@ -1386,6 +1395,7 @@ internal abstract class AbstractEventQueryGeneratorIntegrationTest : TestPropert
                         )
                         prop(TimeSeriesAggregationResult::value).isNotNull().transform { it.toDouble() }
                             .isEqualTo(406.0 + (2.0 / 3))
+                        prop(TimeSeriesAggregationResult::elapsed).isEqualTo(Duration.ofSeconds(4))
                     }
                 }
             }
@@ -1409,14 +1419,17 @@ internal abstract class AbstractEventQueryGeneratorIntegrationTest : TestPropert
                 index(0).all {
                     prop(TimeSeriesAggregationResult::start).isEqualTo(start)
                     prop(TimeSeriesAggregationResult::value).isNotNull().transform { it.toDouble() }.isEqualTo(4.0)
+                    prop(TimeSeriesAggregationResult::elapsed).isEqualTo(Duration.ZERO)
                 }
                 index(1).all {
                     prop(TimeSeriesAggregationResult::start).isEqualTo(start + Duration.ofSeconds(2))
                     prop(TimeSeriesAggregationResult::value).isNotNull().transform { it.toDouble() }.isEqualTo(4.0)
+                    prop(TimeSeriesAggregationResult::elapsed).isEqualTo(Duration.ofSeconds(2))
                 }
                 index(2).all {
                     prop(TimeSeriesAggregationResult::start).isEqualTo(start + Duration.ofSeconds(4))
                     prop(TimeSeriesAggregationResult::value).isNotNull().transform { it.toDouble() }.isEqualTo(3.0)
+                    prop(TimeSeriesAggregationResult::elapsed).isEqualTo(Duration.ofSeconds(4))
                 }
             }
         }
@@ -1440,14 +1453,17 @@ internal abstract class AbstractEventQueryGeneratorIntegrationTest : TestPropert
                 index(0).all {
                     prop(TimeSeriesAggregationResult::start).isEqualTo(start)
                     prop(TimeSeriesAggregationResult::value).isNotNull().transform { it.toDouble() }.isEqualTo(4.0)
+                    prop(TimeSeriesAggregationResult::elapsed).isEqualTo(Duration.ZERO)
                 }
                 index(1).all {
                     prop(TimeSeriesAggregationResult::start).isEqualTo(start + Duration.ofSeconds(2))
                     prop(TimeSeriesAggregationResult::value).isNotNull().transform { it.toDouble() }.isEqualTo(4.0)
+                    prop(TimeSeriesAggregationResult::elapsed).isEqualTo(Duration.ofSeconds(2))
                 }
                 index(2).all {
                     prop(TimeSeriesAggregationResult::start).isEqualTo(start + Duration.ofSeconds(4))
                     prop(TimeSeriesAggregationResult::value).isNotNull().transform { it.toDouble() }.isEqualTo(3.0)
+                    prop(TimeSeriesAggregationResult::elapsed).isEqualTo(Duration.ofSeconds(4))
                 }
             }
         }
@@ -1471,14 +1487,17 @@ internal abstract class AbstractEventQueryGeneratorIntegrationTest : TestPropert
                 index(0).all {
                     prop(TimeSeriesAggregationResult::start).isEqualTo(start)
                     prop(TimeSeriesAggregationResult::value).isNotNull().transform { it.toDouble() }.isEqualTo(2.0)
+                    prop(TimeSeriesAggregationResult::elapsed).isEqualTo(Duration.ZERO)
                 }
                 index(1).all {
                     prop(TimeSeriesAggregationResult::start).isEqualTo(start + Duration.ofSeconds(2))
                     prop(TimeSeriesAggregationResult::value).isNotNull().transform { it.toDouble() }.isEqualTo(13.0)
+                    prop(TimeSeriesAggregationResult::elapsed).isEqualTo(Duration.ofSeconds(2))
                 }
                 index(2).all {
                     prop(TimeSeriesAggregationResult::start).isEqualTo(start + Duration.ofSeconds(4))
                     prop(TimeSeriesAggregationResult::value).isNotNull().transform { it.toDouble() }.isEqualTo(89.0)
+                    prop(TimeSeriesAggregationResult::elapsed).isEqualTo(Duration.ofSeconds(4))
                 }
             }
         }
@@ -1502,14 +1521,17 @@ internal abstract class AbstractEventQueryGeneratorIntegrationTest : TestPropert
                 index(0).all {
                     prop(TimeSeriesAggregationResult::start).isEqualTo(start)
                     prop(TimeSeriesAggregationResult::value).isNotNull().transform { it.toDouble() }.isEqualTo(8.0)
+                    prop(TimeSeriesAggregationResult::elapsed).isEqualTo(Duration.ZERO)
                 }
                 index(1).all {
                     prop(TimeSeriesAggregationResult::start).isEqualTo(start + Duration.ofSeconds(2))
                     prop(TimeSeriesAggregationResult::value).isNotNull().transform { it.toDouble() }.isEqualTo(55.0)
+                    prop(TimeSeriesAggregationResult::elapsed).isEqualTo(Duration.ofSeconds(2))
                 }
                 index(2).all {
                     prop(TimeSeriesAggregationResult::start).isEqualTo(start + Duration.ofSeconds(4))
                     prop(TimeSeriesAggregationResult::value).isNotNull().transform { it.toDouble() }.isEqualTo(233.0)
+                    prop(TimeSeriesAggregationResult::elapsed).isEqualTo(Duration.ofSeconds(4))
                 }
             }
         }
@@ -1533,14 +1555,17 @@ internal abstract class AbstractEventQueryGeneratorIntegrationTest : TestPropert
                 index(0).all {
                     prop(TimeSeriesAggregationResult::start).isEqualTo(start)
                     prop(TimeSeriesAggregationResult::value).isNotNull().transform { it.toDouble() }.isEqualTo(18.0)
+                    prop(TimeSeriesAggregationResult::elapsed).isEqualTo(Duration.ZERO)
                 }
                 index(1).all {
                     prop(TimeSeriesAggregationResult::start).isEqualTo(start + Duration.ofSeconds(2))
                     prop(TimeSeriesAggregationResult::value).isNotNull().transform { it.toDouble() }.isEqualTo(123.0)
+                    prop(TimeSeriesAggregationResult::elapsed).isEqualTo(Duration.ofSeconds(2))
                 }
                 index(2).all {
                     prop(TimeSeriesAggregationResult::start).isEqualTo(start + Duration.ofSeconds(4))
                     prop(TimeSeriesAggregationResult::value).isNotNull().transform { it.toDouble() }.isEqualTo(466.0)
+                    prop(TimeSeriesAggregationResult::elapsed).isEqualTo(Duration.ofSeconds(4))
                 }
             }
         }
@@ -1565,16 +1590,19 @@ internal abstract class AbstractEventQueryGeneratorIntegrationTest : TestPropert
                     prop(TimeSeriesAggregationResult::start).isEqualTo(start)
                     prop(TimeSeriesAggregationResult::value).isNotNull().transform { it.toDouble() }
                         .isStrictlyBetween(2.64, 2.65)
+                    prop(TimeSeriesAggregationResult::elapsed).isEqualTo(Duration.ZERO)
                 }
                 index(1).all {
                     prop(TimeSeriesAggregationResult::start).isEqualTo(start + Duration.ofSeconds(2))
                     prop(TimeSeriesAggregationResult::value).isNotNull().transform { it.toDouble() }
                         .isStrictlyBetween(18.33, 18.34)
+                    prop(TimeSeriesAggregationResult::elapsed).isEqualTo(Duration.ofSeconds(2))
                 }
                 index(2).all {
                     prop(TimeSeriesAggregationResult::start).isEqualTo(start + Duration.ofSeconds(4))
                     prop(TimeSeriesAggregationResult::value).isNotNull().transform { it.toDouble() }
                         .isStrictlyBetween(72.66, 72.67)
+                    prop(TimeSeriesAggregationResult::elapsed).isEqualTo(Duration.ofSeconds(4))
                 }
             }
         }
@@ -1598,14 +1626,17 @@ internal abstract class AbstractEventQueryGeneratorIntegrationTest : TestPropert
                 index(0).all {
                     prop(TimeSeriesAggregationResult::start).isEqualTo(start)
                     prop(TimeSeriesAggregationResult::value).isNotNull().transform { it.toDouble() }.isEqualTo(8.0)
+                    prop(TimeSeriesAggregationResult::elapsed).isEqualTo(Duration.ZERO)
                 }
                 index(1).all {
                     prop(TimeSeriesAggregationResult::start).isEqualTo(start + Duration.ofSeconds(2))
                     prop(TimeSeriesAggregationResult::value).isNotNull().transform { it.toDouble() }.isEqualTo(55.0)
+                    prop(TimeSeriesAggregationResult::elapsed).isEqualTo(Duration.ofSeconds(2))
                 }
                 index(2).all {
                     prop(TimeSeriesAggregationResult::start).isEqualTo(start + Duration.ofSeconds(4))
                     prop(TimeSeriesAggregationResult::value).isNotNull().transform { it.toDouble() }.isEqualTo(233.0)
+                    prop(TimeSeriesAggregationResult::elapsed).isEqualTo(Duration.ofSeconds(4))
                 }
             }
         }
@@ -1613,7 +1644,7 @@ internal abstract class AbstractEventQueryGeneratorIntegrationTest : TestPropert
         @Test
         internal fun `should aggregate in the right campaigns`() =
             testDispatcherProvider.run {
-                // given"
+                // given
                 val query = eventQueryGenerator.prepareQueries(
                     "tenant-1",
                     QueryDescription(aggregationOperation = QueryAggregationOperator.COUNT)
@@ -1632,44 +1663,19 @@ internal abstract class AbstractEventQueryGeneratorIntegrationTest : TestPropert
                         prop(TimeSeriesAggregationResult::start).isEqualTo(start)
                         prop(TimeSeriesAggregationResult::campaign).isEqualTo("my-campaign-1")
                         prop(TimeSeriesAggregationResult::value).isNotNull().transform { it.toDouble() }.isEqualTo(8.0)
+                        prop(TimeSeriesAggregationResult::elapsed).isEqualTo(Duration.ZERO)
                     }
                     index(1).all {
                         prop(TimeSeriesAggregationResult::start).isEqualTo(start + Duration.ofSeconds(2))
                         prop(TimeSeriesAggregationResult::campaign).isEqualTo("my-campaign-1")
                         prop(TimeSeriesAggregationResult::value).isNotNull().transform { it.toDouble() }.isEqualTo(8.0)
+                        prop(TimeSeriesAggregationResult::elapsed).isEqualTo(Duration.ofSeconds(2))
                     }
                     index(2).all {
                         prop(TimeSeriesAggregationResult::start).isEqualTo(start + Duration.ofSeconds(4))
                         prop(TimeSeriesAggregationResult::campaign).isEqualTo("my-campaign-1")
                         prop(TimeSeriesAggregationResult::value).isNotNull().transform { it.toDouble() }.isEqualTo(6.0)
-                    }
-                }
-
-                // when
-                result = executeAggregation(
-                    query = query,
-                    start = start,
-                    end = latestTimestamp + Duration.ofSeconds(3),
-                    campaigns = setOf("my-campaign-2")
-                )
-
-                // then
-                assertThat(result).all {
-                    hasSize(3)
-                    index(0).all {
-                        prop(TimeSeriesAggregationResult::start).isEqualTo(start)
-                        prop(TimeSeriesAggregationResult::campaign).isEqualTo("my-campaign-2")
-                        prop(TimeSeriesAggregationResult::value).isNotNull().transform { it.toDouble() }.isEqualTo(4.0)
-                    }
-                    index(1).all {
-                        prop(TimeSeriesAggregationResult::start).isEqualTo(start + Duration.ofSeconds(2))
-                        prop(TimeSeriesAggregationResult::campaign).isEqualTo("my-campaign-2")
-                        prop(TimeSeriesAggregationResult::value).isNotNull().transform { it.toDouble() }.isEqualTo(4.0)
-                    }
-                    index(2).all {
-                        prop(TimeSeriesAggregationResult::start).isEqualTo(start + Duration.ofSeconds(4))
-                        prop(TimeSeriesAggregationResult::campaign).isEqualTo("my-campaign-2")
-                        prop(TimeSeriesAggregationResult::value).isNotNull().transform { it.toDouble() }.isEqualTo(3.0)
+                        prop(TimeSeriesAggregationResult::elapsed).isEqualTo(Duration.ofSeconds(4))
                     }
                 }
 
@@ -1683,36 +1689,48 @@ internal abstract class AbstractEventQueryGeneratorIntegrationTest : TestPropert
 
                 // then
                 assertThat(result).all {
-                    hasSize(6)
+                    hasSize(7)
                     index(0).all {
                         prop(TimeSeriesAggregationResult::start).isEqualTo(start)
                         prop(TimeSeriesAggregationResult::campaign).isEqualTo("my-campaign-1")
                         prop(TimeSeriesAggregationResult::value).isNotNull().transform { it.toDouble() }.isEqualTo(8.0)
+                        prop(TimeSeriesAggregationResult::elapsed).isEqualTo(Duration.ZERO)
                     }
                     index(1).all {
                         prop(TimeSeriesAggregationResult::start).isEqualTo(start + Duration.ofSeconds(2))
                         prop(TimeSeriesAggregationResult::campaign).isEqualTo("my-campaign-1")
                         prop(TimeSeriesAggregationResult::value).isNotNull().transform { it.toDouble() }.isEqualTo(8.0)
+                        prop(TimeSeriesAggregationResult::elapsed).isEqualTo(Duration.ofSeconds(2))
                     }
                     index(2).all {
                         prop(TimeSeriesAggregationResult::start).isEqualTo(start + Duration.ofSeconds(4))
                         prop(TimeSeriesAggregationResult::campaign).isEqualTo("my-campaign-1")
                         prop(TimeSeriesAggregationResult::value).isNotNull().transform { it.toDouble() }.isEqualTo(6.0)
+                        prop(TimeSeriesAggregationResult::elapsed).isEqualTo(Duration.ofSeconds(4))
                     }
                     index(3).all {
-                        prop(TimeSeriesAggregationResult::start).isEqualTo(start)
-                        prop(TimeSeriesAggregationResult::campaign).isEqualTo("my-campaign-2")
-                        prop(TimeSeriesAggregationResult::value).isNotNull().transform { it.toDouble() }.isEqualTo(4.0)
-                    }
-                    index(4).all {
                         prop(TimeSeriesAggregationResult::start).isEqualTo(start + Duration.ofSeconds(2))
                         prop(TimeSeriesAggregationResult::campaign).isEqualTo("my-campaign-2")
-                        prop(TimeSeriesAggregationResult::value).isNotNull().transform { it.toDouble() }.isEqualTo(4.0)
+                        prop(TimeSeriesAggregationResult::value).isNotNull().transform { it.toDouble() }.isEqualTo(3.0)
+                        prop(TimeSeriesAggregationResult::elapsed).isEqualTo(Duration.ZERO)
                     }
-                    index(5).all {
+                    index(4).all {
                         prop(TimeSeriesAggregationResult::start).isEqualTo(start + Duration.ofSeconds(4))
                         prop(TimeSeriesAggregationResult::campaign).isEqualTo("my-campaign-2")
-                        prop(TimeSeriesAggregationResult::value).isNotNull().transform { it.toDouble() }.isEqualTo(3.0)
+                        prop(TimeSeriesAggregationResult::value).isNotNull().transform { it.toDouble() }.isEqualTo(4.0)
+                        prop(TimeSeriesAggregationResult::elapsed).isEqualTo(Duration.ofSeconds(2))
+                    }
+                    index(5).all {
+                        prop(TimeSeriesAggregationResult::start).isEqualTo(start + Duration.ofSeconds(6))
+                        prop(TimeSeriesAggregationResult::campaign).isEqualTo("my-campaign-2")
+                        prop(TimeSeriesAggregationResult::value).isNotNull().transform { it.toDouble() }.isEqualTo(4.0)
+                        prop(TimeSeriesAggregationResult::elapsed).isEqualTo(Duration.ofSeconds(4))
+                    }
+                    index(6).all {
+                        prop(TimeSeriesAggregationResult::start).isEqualTo(start + Duration.ofSeconds(8))
+                        prop(TimeSeriesAggregationResult::campaign).isEqualTo("my-campaign-2")
+                        prop(TimeSeriesAggregationResult::value).isNotNull().transform { it.toDouble() }.isEqualTo(1.0)
+                        prop(TimeSeriesAggregationResult::elapsed).isEqualTo(Duration.ofSeconds(6))
                     }
                 }
             }
@@ -1740,16 +1758,19 @@ internal abstract class AbstractEventQueryGeneratorIntegrationTest : TestPropert
                         prop(TimeSeriesAggregationResult::start).isEqualTo(start)
                         prop(TimeSeriesAggregationResult::campaign).isEqualTo("my-campaign-1")
                         prop(TimeSeriesAggregationResult::value).isNotNull().transform { it.toDouble() }.isEqualTo(8.0)
+                        prop(TimeSeriesAggregationResult::elapsed).isEqualTo(Duration.ZERO)
                     }
                     index(1).all {
                         prop(TimeSeriesAggregationResult::start).isEqualTo(start + Duration.ofSeconds(2))
                         prop(TimeSeriesAggregationResult::campaign).isEqualTo("my-campaign-1")
                         prop(TimeSeriesAggregationResult::value).isNotNull().transform { it.toDouble() }.isEqualTo(8.0)
+                        prop(TimeSeriesAggregationResult::elapsed).isEqualTo(Duration.ofSeconds(2))
                     }
                     index(2).all {
                         prop(TimeSeriesAggregationResult::start).isEqualTo(start + Duration.ofSeconds(4))
                         prop(TimeSeriesAggregationResult::campaign).isEqualTo("my-campaign-1")
                         prop(TimeSeriesAggregationResult::value).isNotNull().transform { it.toDouble() }.isEqualTo(6.0)
+                        prop(TimeSeriesAggregationResult::elapsed).isEqualTo(Duration.ofSeconds(4))
                     }
                 }
 
@@ -1764,36 +1785,48 @@ internal abstract class AbstractEventQueryGeneratorIntegrationTest : TestPropert
 
                 // then
                 assertThat(result).all {
-                    hasSize(6)
+                    hasSize(7)
                     index(0).all {
                         prop(TimeSeriesAggregationResult::start).isEqualTo(start)
                         prop(TimeSeriesAggregationResult::campaign).isEqualTo("my-campaign-1")
                         prop(TimeSeriesAggregationResult::value).isNotNull().transform { it.toDouble() }.isEqualTo(8.0)
+                        prop(TimeSeriesAggregationResult::elapsed).isEqualTo(Duration.ZERO)
                     }
                     index(1).all {
                         prop(TimeSeriesAggregationResult::start).isEqualTo(start + Duration.ofSeconds(2))
                         prop(TimeSeriesAggregationResult::campaign).isEqualTo("my-campaign-1")
                         prop(TimeSeriesAggregationResult::value).isNotNull().transform { it.toDouble() }.isEqualTo(8.0)
+                        prop(TimeSeriesAggregationResult::elapsed).isEqualTo(Duration.ofSeconds(2))
                     }
                     index(2).all {
                         prop(TimeSeriesAggregationResult::start).isEqualTo(start + Duration.ofSeconds(4))
                         prop(TimeSeriesAggregationResult::campaign).isEqualTo("my-campaign-1")
                         prop(TimeSeriesAggregationResult::value).isNotNull().transform { it.toDouble() }.isEqualTo(6.0)
+                        prop(TimeSeriesAggregationResult::elapsed).isEqualTo(Duration.ofSeconds(4))
                     }
                     index(3).all {
-                        prop(TimeSeriesAggregationResult::start).isEqualTo(start)
-                        prop(TimeSeriesAggregationResult::campaign).isEqualTo("my-campaign-2")
-                        prop(TimeSeriesAggregationResult::value).isNotNull().transform { it.toDouble() }.isEqualTo(4.0)
-                    }
-                    index(4).all {
                         prop(TimeSeriesAggregationResult::start).isEqualTo(start + Duration.ofSeconds(2))
                         prop(TimeSeriesAggregationResult::campaign).isEqualTo("my-campaign-2")
-                        prop(TimeSeriesAggregationResult::value).isNotNull().transform { it.toDouble() }.isEqualTo(4.0)
+                        prop(TimeSeriesAggregationResult::value).isNotNull().transform { it.toDouble() }.isEqualTo(3.0)
+                        prop(TimeSeriesAggregationResult::elapsed).isEqualTo(Duration.ZERO)
                     }
-                    index(5).all {
+                    index(4).all {
                         prop(TimeSeriesAggregationResult::start).isEqualTo(start + Duration.ofSeconds(4))
                         prop(TimeSeriesAggregationResult::campaign).isEqualTo("my-campaign-2")
-                        prop(TimeSeriesAggregationResult::value).isNotNull().transform { it.toDouble() }.isEqualTo(3.0)
+                        prop(TimeSeriesAggregationResult::value).isNotNull().transform { it.toDouble() }.isEqualTo(4.0)
+                        prop(TimeSeriesAggregationResult::elapsed).isEqualTo(Duration.ofSeconds(2))
+                    }
+                    index(5).all {
+                        prop(TimeSeriesAggregationResult::start).isEqualTo(start + Duration.ofSeconds(6))
+                        prop(TimeSeriesAggregationResult::campaign).isEqualTo("my-campaign-2")
+                        prop(TimeSeriesAggregationResult::value).isNotNull().transform { it.toDouble() }.isEqualTo(4.0)
+                        prop(TimeSeriesAggregationResult::elapsed).isEqualTo(Duration.ofSeconds(4))
+                    }
+                    index(6).all {
+                        prop(TimeSeriesAggregationResult::start).isEqualTo(start + Duration.ofSeconds(8))
+                        prop(TimeSeriesAggregationResult::campaign).isEqualTo("my-campaign-2")
+                        prop(TimeSeriesAggregationResult::value).isNotNull().transform { it.toDouble() }.isEqualTo(1.0)
+                        prop(TimeSeriesAggregationResult::elapsed).isEqualTo(Duration.ofSeconds(6))
                     }
                 }
 
@@ -1813,16 +1846,19 @@ internal abstract class AbstractEventQueryGeneratorIntegrationTest : TestPropert
                         prop(TimeSeriesAggregationResult::start).isEqualTo(start)
                         prop(TimeSeriesAggregationResult::campaign).isEqualTo("my-campaign-1")
                         prop(TimeSeriesAggregationResult::value).isNotNull().transform { it.toDouble() }.isEqualTo(4.0)
+                        prop(TimeSeriesAggregationResult::elapsed).isEqualTo(Duration.ZERO)
                     }
                     index(1).all {
                         prop(TimeSeriesAggregationResult::start).isEqualTo(start + Duration.ofSeconds(2))
                         prop(TimeSeriesAggregationResult::campaign).isEqualTo("my-campaign-1")
                         prop(TimeSeriesAggregationResult::value).isNotNull().transform { it.toDouble() }.isEqualTo(4.0)
+                        prop(TimeSeriesAggregationResult::elapsed).isEqualTo(Duration.ofSeconds(2))
                     }
                     index(2).all {
                         prop(TimeSeriesAggregationResult::start).isEqualTo(start + Duration.ofSeconds(4))
                         prop(TimeSeriesAggregationResult::campaign).isEqualTo("my-campaign-1")
                         prop(TimeSeriesAggregationResult::value).isNotNull().transform { it.toDouble() }.isEqualTo(3.0)
+                        prop(TimeSeriesAggregationResult::elapsed).isEqualTo(Duration.ofSeconds(4))
                     }
                 }
             }

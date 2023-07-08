@@ -16,6 +16,7 @@
 
 package io.qalipsis.plugins.timescaledb.dataprovider
 
+import io.qalipsis.api.context.CampaignKey
 import io.qalipsis.api.logging.LoggerHelper.logger
 import io.qalipsis.api.query.AggregationQueryExecutionContext
 import io.qalipsis.api.report.TimeSeriesAggregationResult
@@ -74,30 +75,25 @@ internal class AggregationExecutor(
                 }.execute())
                     .flatMapMany { result ->
                         log.trace { "Received a result to the query" }
-                        var firstBucket: Instant = Instant.EPOCH
+                        val firstBucketsByCampaign = mutableMapOf<CampaignKey?, Instant>()
                         result.map { row, _ ->
                             val timestamp = (row["bucket"] as OffsetDateTime).toInstant()
+                            val campaignKey = row["campaign"] as? String
                             val value = (row["result"] as Number?)?.let {
                                 when (it) {
                                     is BigDecimal -> it
-                                    is Long -> BigDecimal.valueOf(
-                                        it
-                                    )
+                                    is Long -> BigDecimal.valueOf(it)
                                     is Double -> BigDecimal.valueOf(it)
                                     else -> null
                                 }
                             }
 
-                            val elapsed = if (firstBucket == Instant.EPOCH) {
-                                firstBucket = timestamp
-                                Duration.ZERO
-                            } else {
-                                Duration.between(firstBucket, timestamp)
-                            }
+                            val elapsed = firstBucketsByCampaign.computeIfAbsent(campaignKey) { timestamp }
+                                .let { Duration.between(it, timestamp) }
                             TimeSeriesAggregationResult(
                                 start = timestamp,
                                 elapsed = elapsed,
-                                campaign = row["campaign"] as? String,
+                                campaign = campaignKey,
                                 value = value
                             ).also {
                                 log.trace { "Received the aggregation $it" }
