@@ -36,6 +36,7 @@ import io.qalipsis.test.coroutines.TestDispatcherProvider
 import io.qalipsis.test.mockk.relaxedMockk
 import io.r2dbc.postgresql.PostgresqlConnectionConfiguration
 import io.r2dbc.postgresql.PostgresqlConnectionFactory
+import io.r2dbc.postgresql.client.SSLMode
 import io.r2dbc.postgresql.codec.Json
 import io.r2dbc.spi.Connection
 import jakarta.inject.Inject
@@ -120,6 +121,11 @@ internal abstract class AbstractTimescaledbEventsPublisherIntegrationTest {
             every { lingerPeriod } returns Duration.ofNanos(1)
             every { batchSize } returns 2000
             every { publishers } returns 1
+            every { enableSsl } returns false
+            every { sslMode } returns SSLMode.DISABLE
+            every { sslRootCert } returns null
+            every { sslCert } returns null
+            every { sslKey } returns null
             every { initSchema } returns true
         }
         val publisher = TimescaledbEventsPublisher(this, configuration, eventsConverter)
@@ -237,7 +243,12 @@ internal abstract class AbstractTimescaledbEventsPublisherIntegrationTest {
             every { lingerPeriod } returns Duration.ofSeconds(2)
             every { batchSize } returns 10_000
             every { publishers } returns 5
-            every { initSchema } returns true
+            every { enableSsl } returns false
+            every { sslMode } returns SSLMode.DISABLE
+            every { sslRootCert } returns null
+            every { sslCert } returns null
+            every { sslKey } returns null
+            every { initSchema } returns false
         }
         val publisher = TimescaledbEventsPublisher(this, configuration, eventsConverter)
         publisher.start()

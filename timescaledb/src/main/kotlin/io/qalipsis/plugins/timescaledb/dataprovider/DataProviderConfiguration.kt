@@ -54,4 +54,6 @@ interface DataProviderConfiguration {
     val maxSize: Int
 
     val maxIdleTime: Duration
+
+    val initSchema: Boolean
 }

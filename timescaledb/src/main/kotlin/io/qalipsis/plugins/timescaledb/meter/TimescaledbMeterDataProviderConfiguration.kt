@@ -80,4 +80,7 @@ interface TimescaledbMeterDataProviderConfiguration : DataProviderConfiguration 
 
     @get:Bindable(defaultValue = "PT1M")
     override val maxIdleTime: Duration
+
+    @get:Bindable(defaultValue = "true")
+    override val initSchema: Boolean
 }

@@ -72,6 +72,7 @@ internal abstract class AbstractMeterDataProviderIntegrationTest : TestPropertyP
         "meters.provider.timescaledb.username" to USERNAME,
         "meters.provider.timescaledb.password" to PASSWORD,
         "meters.provider.timescaledb.schema" to SCHEMA,
+        "events.provider.timescaledb.init-schema" to "true",
 
         "meters.export.enabled" to "true",
         "meters.export.timescaledb.enabled" to "true",
@@ -80,7 +81,8 @@ internal abstract class AbstractMeterDataProviderIntegrationTest : TestPropertyP
         "meters.export.timescaledb.database" to DB_NAME,
         "meters.export.timescaledb.username" to USERNAME,
         "meters.export.timescaledb.password" to PASSWORD,
-        "meters.export.timescaledb.schema" to SCHEMA
+        "meters.export.timescaledb.schema" to SCHEMA,
+        "meters.export.timescaledb.init-schema" to "false",
     )
 
     @BeforeEach

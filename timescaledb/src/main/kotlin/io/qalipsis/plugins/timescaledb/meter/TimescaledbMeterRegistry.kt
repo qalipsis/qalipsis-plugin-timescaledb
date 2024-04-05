@@ -79,7 +79,12 @@ internal class TimescaledbMeterRegistry(
                     username = config.username(),
                     password = config.password(),
                     database = config.database(),
-                    defaultSchemaName = config.schema()
+                    defaultSchemaName = config.schema(),
+                    enableSsl = config.enableSsl(),
+                    sslMode = config.sslMode(),
+                    sslRootCert = config.sslRootCert(),
+                    sslKey = config.sslKey(),
+                    sslCert = config.sslCert()
                 )
             ).run()
             schemaInitialized = true

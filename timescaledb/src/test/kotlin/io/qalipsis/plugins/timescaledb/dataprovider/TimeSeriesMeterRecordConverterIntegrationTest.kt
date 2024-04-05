@@ -322,6 +322,7 @@ internal class TimeSeriesMeterRecordConverterIntegrationTest : TestPropertyProvi
             override val sslRootCert: String? = null
             override val sslCert: String? = null
             override val sslKey: String? = null
+            override val initSchema: Boolean = false
         })
 
         return mapOf(

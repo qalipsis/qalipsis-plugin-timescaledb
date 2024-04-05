@@ -17,7 +17,6 @@
 package io.qalipsis.plugins.timescaledb.dataprovider
 
 import com.fasterxml.jackson.databind.ObjectMapper
-import io.micrometer.core.lang.Nullable
 import io.micronaut.context.annotation.Requires
 import io.qalipsis.api.Executors
 import io.qalipsis.api.logging.LoggerHelper.logger
@@ -31,15 +30,16 @@ import io.qalipsis.plugins.timescaledb.event.TimescaledbEventDataProviderConfigu
 import io.qalipsis.plugins.timescaledb.meter.TimescaledbMeterDataProviderConfiguration
 import io.qalipsis.plugins.timescaledb.utils.DbUtils
 import io.r2dbc.pool.ConnectionPool
+import jakarta.annotation.Nullable
 import jakarta.inject.Named
 import jakarta.inject.Singleton
-import java.time.Duration
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.async
 import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.flow.mapNotNull
 import kotlinx.coroutines.flow.toList
 import kotlinx.coroutines.withTimeout
+import java.time.Duration
 
 @Singleton
 @Requires(bean = AbstractDataProvider::class)

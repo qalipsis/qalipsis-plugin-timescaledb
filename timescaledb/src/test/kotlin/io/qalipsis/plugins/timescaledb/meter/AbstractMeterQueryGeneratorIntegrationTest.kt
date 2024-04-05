@@ -116,6 +116,7 @@ internal abstract class AbstractMeterQueryGeneratorIntegrationTest : TestPropert
         "meters.provider.timescaledb.username" to USERNAME,
         "meters.provider.timescaledb.password" to PASSWORD,
         "meters.provider.timescaledb.schema" to SCHEMA,
+        "events.provider.timescaledb.init-schema" to "true",
 
         "meters.export.enabled" to "true",
         "meters.export.timescaledb.enabled" to "true",
@@ -124,7 +125,8 @@ internal abstract class AbstractMeterQueryGeneratorIntegrationTest : TestPropert
         "meters.export.timescaledb.database" to DB_NAME,
         "meters.export.timescaledb.username" to USERNAME,
         "meters.export.timescaledb.password" to PASSWORD,
-        "meters.export.timescaledb.schema" to SCHEMA
+        "meters.export.timescaledb.schema" to SCHEMA,
+        "meters.export.timescaledb.init-schema" to "false",
     )
 
     private var initialized = false
@@ -147,6 +149,7 @@ internal abstract class AbstractMeterQueryGeneratorIntegrationTest : TestPropert
                 override val sslRootCert: String? = null
                 override val sslCert: String? = null
                 override val sslKey: String? = null
+                override val initSchema: Boolean = false
             })
 
             Flux.usingWhen(

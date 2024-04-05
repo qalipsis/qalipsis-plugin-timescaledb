@@ -213,6 +213,7 @@ internal class TimeSeriesEventRecordConverterIntegrationTest : TestPropertyProvi
             override val sslRootCert: String? = null
             override val sslCert: String? = null
             override val sslKey: String? = null
+            override val initSchema: Boolean = false
         })
 
         return mapOf(
@@ -268,6 +269,7 @@ internal class TimeSeriesEventRecordConverterIntegrationTest : TestPropertyProvi
             withPassword(PASSWORD)
             withCommand("postgres -c shared_preload_libraries=timescaledb -c log_error_verbosity=VERBOSE -c timescaledb.telemetry_level=OFF -c max_connections=100")
             withInitScript("pgsql-init.sql")
+            withCreateContainerCmdModifier { cmd -> cmd.withPlatform("linux/amd64") }
         }
     }
 }
