@@ -20,6 +20,7 @@ import io.micrometer.core.instrument.config.MeterRegistryConfigValidator
 import io.micrometer.core.instrument.config.validate.PropertyValidator
 import io.micrometer.core.instrument.config.validate.Validated
 import io.micrometer.core.instrument.step.StepRegistryConfig
+import io.r2dbc.postgresql.client.SSLMode
 
 
 /**
@@ -55,6 +56,26 @@ abstract class TimescaledbMeterConfig : StepRegistryConfig {
 
     fun schema(): String {
         return PropertyValidator.getString(this, "schema").orElse("meters")
+    }
+
+    fun enableSsl(): Boolean {
+        return PropertyValidator.getBoolean(this, "enableSsl").orElse(false)
+    }
+
+    fun sslMode(): SSLMode {
+        return PropertyValidator.getEnum(this, SSLMode::class.java, "sslMode").orElse(SSLMode.PREFER)
+    }
+
+    fun sslRootCert(): String? {
+        return PropertyValidator.getString(this, "sslRootCert").orElse(null)
+    }
+
+    fun sslKey(): String? {
+        return PropertyValidator.getString(this, "sslKey").orElse(null)
+    }
+
+    fun sslCert(): String? {
+        return PropertyValidator.getString(this, "sslCert").orElse(null)
     }
 
     /**

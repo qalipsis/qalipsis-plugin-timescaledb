@@ -35,6 +35,7 @@ import io.qalipsis.plugins.timescaledb.event.catadioptre.doPerformPublish
 import io.qalipsis.test.coroutines.TestDispatcherProvider
 import io.r2dbc.postgresql.PostgresqlConnectionConfiguration
 import io.r2dbc.postgresql.PostgresqlConnectionFactory
+import io.r2dbc.postgresql.client.SSLMode
 import io.r2dbc.spi.Connection
 import jakarta.inject.Inject
 import kotlinx.coroutines.CoroutineScope
@@ -95,7 +96,12 @@ internal abstract class AbstractEventDataProviderIntegrationTest : TestPropertyP
             every { lingerPeriod } returns Duration.ofNanos(1)
             every { batchSize } returns 2000
             every { publishers } returns 1
-            every { initSchema } returns true
+            every { enableSsl } returns false
+            every { sslMode } returns SSLMode.DISABLE
+            every { sslRootCert } returns null
+            every { sslCert } returns null
+            every { sslKey } returns null
+            every { initSchema } returns false
         }
 
         publisher =
@@ -120,6 +126,7 @@ internal abstract class AbstractEventDataProviderIntegrationTest : TestPropertyP
         "events.provider.timescaledb.username" to USERNAME,
         "events.provider.timescaledb.password" to PASSWORD,
         "events.provider.timescaledb.schema" to SCHEMA,
+        "events.provider.timescaledb.init-schema" to "true",
     )
 
     @Test

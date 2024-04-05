@@ -21,7 +21,6 @@ import io.r2dbc.pool.ConnectionPool
 import io.r2dbc.pool.ConnectionPoolConfiguration
 import io.r2dbc.postgresql.PostgresqlConnectionConfiguration
 import io.r2dbc.postgresql.PostgresqlConnectionFactory
-import io.r2dbc.postgresql.client.SSLMode
 import io.r2dbc.spi.Connection
 import kotlinx.coroutines.reactive.awaitFirst
 import reactor.core.publisher.Flux
@@ -70,7 +69,6 @@ internal object DbUtils {
                         configuration.sslKey?.let { builder.sslKey(it) }
                     }
                 }
-                .sslMode(SSLMode.ALLOW)
                 .applicationName("qalipsis-timescaledb")
                 .build()
         )

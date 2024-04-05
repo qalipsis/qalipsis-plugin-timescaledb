@@ -54,7 +54,7 @@ internal class TimescaleDbContainerProvider : JdbcDatabaseContainerProvider() {
 
         val IMAGE = "timescale/timescaledb"
 
-        val DEFAULT_TAG = "latest-pg14"
+        val DEFAULT_TAG = "latest-pg16"
 
     }
 }

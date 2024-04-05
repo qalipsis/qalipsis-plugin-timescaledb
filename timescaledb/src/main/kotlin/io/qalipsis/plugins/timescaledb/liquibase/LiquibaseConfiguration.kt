@@ -16,6 +16,8 @@
 
 package io.qalipsis.plugins.timescaledb.liquibase
 
+import io.r2dbc.postgresql.client.SSLMode
+
 internal data class LiquibaseConfiguration(
     val changeLog: String,
     val host: String,
@@ -23,6 +25,11 @@ internal data class LiquibaseConfiguration(
     val username: String,
     val password: String,
     val database: String,
+    val enableSsl: Boolean,
+    val sslMode: SSLMode,
+    val sslRootCert: String?,
+    val sslCert: String?,
+    val sslKey: String?,
     val defaultSchemaName: String,
     val liquibaseSchemaName: String = defaultSchemaName
 )

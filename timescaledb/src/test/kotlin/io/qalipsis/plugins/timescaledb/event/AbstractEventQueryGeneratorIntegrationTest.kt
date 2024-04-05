@@ -146,6 +146,7 @@ internal abstract class AbstractEventQueryGeneratorIntegrationTest : TestPropert
                 override val sslRootCert: String? = null
                 override val sslCert: String? = null
                 override val sslKey: String? = null
+                override val initSchema: Boolean = false
             })
 
             Flux.usingWhen(
@@ -165,6 +166,11 @@ internal abstract class AbstractEventQueryGeneratorIntegrationTest : TestPropert
                 every { lingerPeriod } returns Duration.ofNanos(1)
                 every { batchSize } returns 2000
                 every { publishers } returns 1
+                every { enableSsl } returns false
+                every { sslMode } returns SSLMode.DISABLE
+                every { sslRootCert } returns null
+                every { sslCert } returns null
+                every { sslKey } returns null
                 every { initSchema } returns true
             }
 

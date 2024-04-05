@@ -21,6 +21,7 @@ import io.micronaut.context.annotation.Requires
 import io.micronaut.core.bind.annotation.Bindable
 import io.micronaut.core.util.StringUtils
 import io.qalipsis.api.events.EventLevel
+import io.r2dbc.postgresql.client.SSLMode
 import java.time.Duration
 import javax.validation.constraints.Min
 import javax.validation.constraints.NotBlank
@@ -80,6 +81,18 @@ interface TimescaledbEventsPublisherConfiguration {
 
     @get:NotBlank
     val password: String
+
+    @get:Bindable(defaultValue = "false")
+    val enableSsl: Boolean
+
+    @get:Bindable(defaultValue = "PREFER")
+    val sslMode: SSLMode
+
+    val sslRootCert: String?
+
+    val sslCert: String?
+
+    val sslKey: String?
 
     /**
      * Specifies whether the schema for the meters should be created or updated at startup.

@@ -21,6 +21,8 @@ import io.micronaut.context.annotation.Factory
 import io.micronaut.context.annotation.Requirements
 import io.micronaut.context.annotation.Requires
 import io.qalipsis.api.logging.LoggerHelper.logger
+import io.qalipsis.plugins.timescaledb.liquibase.LiquibaseConfiguration
+import io.qalipsis.plugins.timescaledb.liquibase.LiquibaseRunner
 import io.qalipsis.plugins.timescaledb.utils.DbUtils
 import io.r2dbc.pool.ConnectionPool
 import jakarta.inject.Named
@@ -40,6 +42,24 @@ internal class EventQueryGeneratorFactory {
     @Named("event-data-provider")
     fun eventDataProviderConnection(configuration: TimescaledbEventDataProviderConfiguration): ConnectionPool {
         connectionPool = DbUtils.createConnectionPool(configuration)
+        if (configuration.initSchema) {
+            LiquibaseRunner(
+                LiquibaseConfiguration(
+                    changeLog = "db/liquibase-events-changelog.xml",
+                    host = configuration.host,
+                    port = configuration.port,
+                    username = configuration.username,
+                    password = configuration.password,
+                    database = configuration.database,
+                    defaultSchemaName = configuration.schema,
+                    enableSsl = configuration.enableSsl,
+                    sslMode = configuration.sslMode,
+                    sslRootCert = configuration.sslRootCert,
+                    sslKey = configuration.sslKey,
+                    sslCert = configuration.sslCert
+                )
+            ).run()
+        }
         return connectionPool
     }
 

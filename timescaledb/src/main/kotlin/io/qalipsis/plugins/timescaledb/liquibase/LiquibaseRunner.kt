@@ -27,6 +27,7 @@ import liquibase.resource.ClassLoaderResourceAccessor
 import org.postgresql.Driver
 import java.sql.Connection
 import java.sql.DriverManager
+import java.util.Properties
 
 /**
  * Class in charge to apply the schema changes to the database.
@@ -38,15 +39,29 @@ internal class LiquibaseRunner(
 ) {
 
     fun run() {
+        // List of supported parameters: https://jdbc.postgresql.org/documentation/use/#connection-parameters
         val changeLog = configuration.changeLog
-        DriverManager.getConnection(
-            "jdbc:postgresql://${configuration.host}:${configuration.port}/${configuration.database}",
-            configuration.username,
-            configuration.password
-        ).use { connection ->
-            val liquibase = Liquibase(changeLog, ClassLoaderResourceAccessor(), createDatabase(connection))
-            liquibase.update(Contexts(), LabelExpression())
+        val properties = Properties()
+        properties["ApplicationName"] = "qalipsis-timescaledb-liquibase"
+        properties["user"] = configuration.username
+        properties["password"] = configuration.password
+        if (configuration.enableSsl) {
+            properties["ssl"] = "true"
+            properties["sslmode"] = configuration.sslMode.name
+            configuration.sslRootCert?.let { properties["sslrootcert"] = it }
+            configuration.sslCert?.let { properties["sslcert"] = it }
+            configuration.sslKey?.let { properties["sslkey"] = it }
         }
+
+        DriverManager
+            .getConnection(
+                "jdbc:postgresql://${configuration.host}:${configuration.port}/${configuration.database}",
+                properties
+            )
+            .use { connection ->
+                val liquibase = Liquibase(changeLog, ClassLoaderResourceAccessor(), createDatabase(connection))
+                liquibase.update(Contexts(), LabelExpression())
+            }
     }
 
     private fun createDatabase(connection: Connection): Database {

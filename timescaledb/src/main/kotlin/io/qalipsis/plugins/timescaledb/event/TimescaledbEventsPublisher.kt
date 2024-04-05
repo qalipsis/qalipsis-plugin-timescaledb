@@ -103,6 +103,11 @@ internal class TimescaledbEventsPublisher(
                     password = configuration.password,
                     database = configuration.database,
                     defaultSchemaName = configuration.schema,
+                    enableSsl = configuration.enableSsl,
+                    sslMode = configuration.sslMode,
+                    sslRootCert = configuration.sslRootCert,
+                    sslKey = configuration.sslKey,
+                    sslCert = configuration.sslCert
                 )
             ).run()
             schemaCreated = true
