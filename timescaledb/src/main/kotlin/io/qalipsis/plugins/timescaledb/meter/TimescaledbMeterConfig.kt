@@ -16,106 +16,115 @@
 
 package io.qalipsis.plugins.timescaledb.meter
 
-import io.micrometer.core.instrument.config.MeterRegistryConfigValidator
-import io.micrometer.core.instrument.config.validate.PropertyValidator
-import io.micrometer.core.instrument.config.validate.Validated
-import io.micrometer.core.instrument.step.StepRegistryConfig
+import io.micronaut.context.annotation.ConfigurationProperties
+import io.micronaut.context.annotation.Requires
+import io.micronaut.core.annotation.Introspected
+import io.micronaut.core.util.StringUtils
+import io.qalipsis.plugins.timescaledb.meter.TimescaledbMeterConfig.Companion.TIMESCALEDB_CONFIGURATION
 import io.r2dbc.postgresql.client.SSLMode
-
+import javax.validation.constraints.NotBlank
+import javax.validation.constraints.Positive
 
 /**
- * {@link MeterRegistry} for Timescaledb
  *
- * @author Palina Bril
+ * Measurement configuration properties for Timescaledb.
+ *
+ * @author Francisca Eze
  */
-abstract class TimescaledbMeterConfig : StepRegistryConfig {
+@Introspected
+@Requires(property = "$TIMESCALEDB_CONFIGURATION.enabled", value = StringUtils.TRUE)
+@ConfigurationProperties(TIMESCALEDB_CONFIGURATION)
+internal class TimescaledbMeterConfig {
 
-    override fun prefix(): String {
-        return "timescaledb"
-    }
+    @get:NotBlank
+    var prefix: String = "qalipsis"
 
-    fun host(): String {
-        return PropertyValidator.getString(this, "host").orElse("localhost")
-    }
+    @get:NotBlank
+    var host: String = "localhost"
 
-    fun port(): Int {
-        return PropertyValidator.getInteger(this, "port").orElse(5432)
-    }
+    @get:Positive
+    var port: Int = 5432
 
-    fun database(): String {
-        return PropertyValidator.getString(this, "database").orElse("qalipsis")
-    }
+    @get:NotBlank
+    var database: String = "qalipsis"
 
-    fun username(): String {
-        return PropertyValidator.getSecret(this, "username").orElse("qalipsis_user")
-    }
+    /**
+     * Name of the user for basic authentication when connecting to the database.
+     */
+    @get:NotBlank
+    var username: String = "qalipsis_user"
 
-    fun password(): String {
-        return PropertyValidator.getSecret(this, "password").orElse("qalipsis-pwd")
-    }
+    /**
+     * Password of the user for basic authentication when connecting to the database.
+     */
+    @get:NotBlank
+    var password: String = "qalipsis-pwd"
 
-    fun schema(): String {
-        return PropertyValidator.getString(this, "schema").orElse("meters")
-    }
+    @get:NotBlank
+    var schema: String = "meters"
 
-    fun enableSsl(): Boolean {
-        return PropertyValidator.getBoolean(this, "enableSsl").orElse(false)
-    }
+    /**
+     * Specify whether Secure Sockets Layer (SSL) encryption should be enabled for communication.
+     */
+    var enableSsl: Boolean = false
 
-    fun sslMode(): SSLMode {
-        return PropertyValidator.getEnum(this, SSLMode::class.java, "sslMode").orElse(SSLMode.PREFER)
-    }
+    /**
+     * Defines the mode of SSL (Secure Sockets Layer) usage for secure communication between a client and a server.
+     */
+    var sslMode: SSLMode = SSLMode.PREFER
 
-    fun sslRootCert(): String? {
-        return PropertyValidator.getString(this, "sslRootCert").orElse(null)
-    }
+    /**
+     * Defines the root certificate used in SSL/TLS encryption for secure communication between a client and a server.
+     */
+    var sslRootCert: String? = null
 
-    fun sslKey(): String? {
-        return PropertyValidator.getString(this, "sslKey").orElse(null)
-    }
+    /**
+     * Specifies the private key used in SSL encryption for secure communication between a client and a server.
+     */
+    var sslKey: String? = null
 
-    fun sslCert(): String? {
-        return PropertyValidator.getString(this, "sslCert").orElse(null)
-    }
+    /**
+     * Specifies the SSL certificate used to establish a secure communication channel between a client and a server.
+     */
+    var sslCert: String? = null
+
+    /**
+     * The minimum number of idle connections in the pool to maintain.
+     */
+    @get:Positive
+    var minIdleConnection: Int = 1
+
+    /**
+     * The maximum number of connections in the pool.
+     */
+    @get:Positive
+    var maxPoolSize: Int = 1
 
     /**
      * For test purpose only.
      */
-    fun autostart(): Boolean {
-        return PropertyValidator.getBoolean(this, "autostart").orElse(true)
-    }
+    var autostart: Boolean = true
 
     /**
      * For test purpose only.
      */
-    fun autoconnect(): Boolean {
-        return PropertyValidator.getBoolean(this, "autoconnect").orElse(true)
-    }
+    var autoconnect: Boolean = true
 
     /**
      * Specifies whether the schema for the meters should be created or updated at startup.
      */
-    fun initSchema(): Boolean {
-        return PropertyValidator.getBoolean(this, "init-schema").orElse(true)
-    }
+    var initSchema: Boolean = true
 
     /**
      * The name of the timestamp field. Default is: "timestamp"
      *
      * @return field name for timestamp
      */
-    fun timestampFieldName(): String {
-        return "timestamp"
-    }
+    val timestampFieldName: String = "timestamp"
 
-    override fun validate(): Validated<*> {
-        return MeterRegistryConfigValidator.checkAll(this,
-            { c: TimescaledbMeterConfig -> StepRegistryConfig.validate(c) },
-            MeterRegistryConfigValidator.checkRequired("host") { obj: TimescaledbMeterConfig -> obj.host() },
-            MeterRegistryConfigValidator.checkRequired("port") { obj: TimescaledbMeterConfig -> obj.port() },
-            MeterRegistryConfigValidator.checkRequired("username") { obj: TimescaledbMeterConfig -> obj.username() },
-            MeterRegistryConfigValidator.checkRequired("password") { obj: TimescaledbMeterConfig -> obj.password() },
-            MeterRegistryConfigValidator.checkRequired("schema") { obj: TimescaledbMeterConfig -> obj.schema() }
-        )
+    companion object {
+        const val TIMESCALEDB_CONFIGURATION = "meters.export.timescaledb"
+
+        const val TIMESCALEDB_ENABLED = "${TIMESCALEDB_CONFIGURATION}.enabled"
     }
 }

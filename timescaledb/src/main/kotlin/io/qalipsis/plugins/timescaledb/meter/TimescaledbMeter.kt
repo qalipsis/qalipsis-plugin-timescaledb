@@ -40,5 +40,5 @@ internal data class TimescaledbMeter(
     val duration: BigDecimal? = null,
     val unit: String? = null,
     val max: BigDecimal? = null,
-    val other: String? = null,
+    val other: String? = null
 )

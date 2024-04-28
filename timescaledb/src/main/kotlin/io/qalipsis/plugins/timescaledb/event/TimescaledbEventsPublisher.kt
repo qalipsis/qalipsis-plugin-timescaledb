@@ -76,6 +76,13 @@ internal class TimescaledbEventsPublisher(
         poolConfig.driverClassName = Driver::class.java.canonicalName
         // See https://jdbc.postgresql.org/documentation/80/connect.html
         poolConfig.jdbcUrl = "jdbc:postgresql://${configuration.host}:${configuration.port}/${configuration.database}"
+        if (configuration.enableSsl) {
+            poolConfig.dataSourceProperties["ssl"] = "true"
+            poolConfig.dataSourceProperties["sslmode"] = configuration.sslMode.name
+            configuration.sslRootCert?.let { poolConfig.dataSourceProperties["sslrootcert"] = it }
+            configuration.sslCert?.let { poolConfig.dataSourceProperties["sslcert"] = it }
+            configuration.sslKey?.let { poolConfig.dataSourceProperties["sslkey"] = it }
+        }
 
         poolConfig.minimumIdle = configuration.publishers
         poolConfig.maximumPoolSize = configuration.publishers

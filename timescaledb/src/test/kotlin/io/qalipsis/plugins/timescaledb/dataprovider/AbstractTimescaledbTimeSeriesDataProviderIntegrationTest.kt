@@ -32,7 +32,8 @@ import io.qalipsis.plugins.timescaledb.event.TimescaledbEventsPublisher
 import io.qalipsis.plugins.timescaledb.event.TimescaledbEventsPublisherConfiguration
 import io.qalipsis.plugins.timescaledb.event.catadioptre.publishConvertedEvents
 import io.qalipsis.plugins.timescaledb.meter.TimescaledbMeter
-import io.qalipsis.plugins.timescaledb.meter.TimescaledbMeterRegistry
+import io.qalipsis.plugins.timescaledb.meter.TimescaledbMeasurementPublisher
+import io.qalipsis.plugins.timescaledb.meter.TimescaledbMeasurementPublisherFactory
 import io.qalipsis.plugins.timescaledb.meter.catadioptre.doPublish
 import io.qalipsis.plugins.timescaledb.utils.DbUtils
 import io.qalipsis.test.coroutines.TestDispatcherProvider
@@ -69,7 +70,9 @@ import java.util.concurrent.TimeUnit
 internal abstract class AbstractTimescaledbTimeSeriesDataProviderIntegrationTest : TestPropertyProvider {
 
     @Inject
-    private lateinit var meterRegistry: TimescaledbMeterRegistry
+    protected lateinit var measurementPublisherFactory: TimescaledbMeasurementPublisherFactory
+
+    private lateinit var timescaledbMeasurementPublisher: TimescaledbMeasurementPublisher
 
     @Inject
     private lateinit var eventsConverter: TimescaledbEventConverter
@@ -257,7 +260,8 @@ internal abstract class AbstractTimescaledbTimeSeriesDataProviderIntegrationTest
                 )
             }
 
-            meterRegistry.doPublish(meters1Tenant1 + meters2Tenant1 + meters1Tenant2 + meters1DefaultTenant + meters2DefaultTenant)
+            timescaledbMeasurementPublisher = measurementPublisherFactory.getPublisher() as TimescaledbMeasurementPublisher
+            timescaledbMeasurementPublisher.doPublish(meters1Tenant1 + meters2Tenant1 + meters1Tenant2 + meters1DefaultTenant + meters2DefaultTenant)
             delay(1000) // Wait for the transaction to be fully committed.
             metersInitialized = true
         }

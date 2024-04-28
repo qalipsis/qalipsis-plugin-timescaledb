@@ -16,16 +16,17 @@
 
 package io.qalipsis.plugins.timescaledb.meter
 
+import io.qalipsis.plugins.timescaledb.TimescaleDbContainerProvider
 import org.junit.jupiter.api.Disabled
 import org.testcontainers.containers.JdbcDatabaseContainer
-import org.testcontainers.containers.PostgreSQLContainerProvider
 import org.testcontainers.containers.wait.strategy.Wait
 import org.testcontainers.junit.jupiter.Container
 import java.time.Duration
 import kotlin.math.pow
 
+
 @Disabled("The test does not pass on Github actions, due to a concurrency race we could not solve so far")
-internal class PostgresqlMetersRegistryIntegrationTest : AbstractTimescaledbMetersRegistryIntegrationTest() {
+internal class TimescaledbMeasurementPublisherIntegrationTest : AbstractTimescaledbMeasurementPublisherIntegrationTest() {
 
     override val dbPort: Int
         get() = db.firstMappedPort
@@ -34,16 +35,17 @@ internal class PostgresqlMetersRegistryIntegrationTest : AbstractTimescaledbMete
 
         @Container
         @JvmStatic
-        val db: JdbcDatabaseContainer<*> = PostgreSQLContainerProvider().newInstance().apply {
+        val db: JdbcDatabaseContainer<*> = TimescaleDbContainerProvider().newInstance().apply {
             withCreateContainerCmdModifier { cmd ->
-                cmd.hostConfig!!.withMemory(50 * 1024.0.pow(2).toLong()).withCpuCount(2)
+                cmd.hostConfig!!.withMemory(128 * 1024.0.pow(2).toLong()).withCpuCount(2)
             }
             waitingFor(Wait.forListeningPort())
-            withStartupTimeout(Duration.ofSeconds(60))
+            withStartupTimeout(Duration.ofSeconds(240))
 
             withDatabaseName(DB_NAME)
             withUsername(USERNAME)
             withPassword(PASSWORD)
+            withCommand("postgres -c shared_preload_libraries=timescaledb -c log_error_verbosity=VERBOSE -c timescaledb.telemetry_level=OFF -c max_connections=100")
             withInitScript("pgsql-init.sql")
         }
     }

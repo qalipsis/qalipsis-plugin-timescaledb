@@ -17,7 +17,7 @@
 package io.qalipsis.plugins.timescaledb.dataprovider
 
 import com.fasterxml.jackson.databind.ObjectMapper
-import io.micrometer.core.instrument.Meter
+import io.qalipsis.api.meters.MeterType
 import io.qalipsis.api.report.TimeSeriesMeter
 import io.qalipsis.api.report.TimeSeriesRecord
 import io.r2dbc.spi.Row
@@ -40,8 +40,7 @@ internal class TimeSeriesMeterRecordConverter(
 
     override fun convert(row: Row, metadata: RowMetadata): TimeSeriesRecord {
         return when (val type = row.get("type", String::class.java)!!) {
-            "${Meter.Type.TIMER}".lowercase() -> convertTimer(type, row)
-            "${Meter.Type.LONG_TASK_TIMER}".lowercase() -> convertTimer(type, row)
+            MeterType.TIMER.value.lowercase() -> convertTimer(type, row)
             else -> convertNonTimer(type, row)
         }
     }
@@ -61,6 +60,9 @@ internal class TimeSeriesMeterRecordConverter(
             maxDuration = row.get("max", BigDecimal::class.java)?.toLong()?.let(Duration::ofNanos),
             activeTasks = row.get("active_tasks", BigDecimal::class.java)?.toInt(),
             duration = row.get("duration_nano", BigDecimal::class.java)?.toLong()?.let(Duration::ofNanos),
+            other = (row.get("other", String::class.java)
+                ?.let { objectMapper.readValue(it, Map::class.java) } as Map<String, String>?)
+                ?.mapValues { BigDecimal(it.value) }
         )
     }
 
