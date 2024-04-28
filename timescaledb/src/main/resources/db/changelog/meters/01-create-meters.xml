@@ -68,7 +68,7 @@
       <column name="max" type="decimal(24,6)">
         <constraints nullable="true"/>
       </column>
-      <column name="other" type="text">
+      <column name="other" type="jsonb">
         <constraints nullable="true"/>
       </column>
     </createTable>

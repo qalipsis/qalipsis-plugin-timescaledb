@@ -23,4 +23,3 @@ meters:
       schema: meters
       username: qalipsis_user
       password: qalipsis-pwd
-      step: PT10S

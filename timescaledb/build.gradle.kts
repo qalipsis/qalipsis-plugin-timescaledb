@@ -50,12 +50,12 @@ dependencies {
 
     implementation("org.liquibase:liquibase-core")
     implementation("io.micronaut.sql:micronaut-jdbc-hikari")
-    implementation("io.micronaut.micrometer:micronaut-micrometer-core")
     implementation("org.jetbrains.kotlinx:kotlinx-coroutines-reactor")
     implementation("io.r2dbc:r2dbc-postgresql:${r2dbcVersion}")
     implementation("io.r2dbc:r2dbc-pool:${r2dbcVersion}")
     implementation("org.postgresql:postgresql")
     implementation("io.r2dbc:r2dbc-spi:${r2dbcVersion}")
+    implementation("org.apache.commons:commons-text:1.11.0")
     implementation(
         group = "io.netty",
         name = "netty-transport-native-epoll",

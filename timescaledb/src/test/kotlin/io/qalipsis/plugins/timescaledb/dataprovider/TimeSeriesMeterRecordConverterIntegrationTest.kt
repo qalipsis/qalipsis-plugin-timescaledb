@@ -21,31 +21,35 @@ import assertk.assertThat
 import assertk.assertions.hasSize
 import assertk.assertions.index
 import assertk.assertions.isDataClassEqualTo
-import io.aerisconsulting.catadioptre.setProperty
-import io.micrometer.core.instrument.Clock
-import io.micrometer.core.instrument.Counter
-import io.micrometer.core.instrument.DistributionSummary
-import io.micrometer.core.instrument.Gauge
-import io.micrometer.core.instrument.Meter
-import io.micrometer.core.instrument.Timer
 import io.micronaut.test.extensions.junit5.annotation.MicronautTest
 import io.micronaut.test.support.TestPropertyProvider
 import io.mockk.every
-import io.mockk.impl.annotations.MockK
+import io.mockk.mockk
 import io.qalipsis.api.logging.LoggerHelper.logger
+import io.qalipsis.api.meters.Counter
+import io.qalipsis.api.meters.DistributionMeasurementMetric
+import io.qalipsis.api.meters.DistributionSummary
+import io.qalipsis.api.meters.Gauge
+import io.qalipsis.api.meters.MeasurementMetric
+import io.qalipsis.api.meters.Meter
+import io.qalipsis.api.meters.MeterSnapshot
+import io.qalipsis.api.meters.MeterType
+import io.qalipsis.api.meters.Statistic
+import io.qalipsis.api.meters.Timer
 import io.qalipsis.api.report.TimeSeriesMeter
 import io.qalipsis.api.report.TimeSeriesRecord
 import io.qalipsis.plugins.timescaledb.TimescaleDbContainerProvider
-import io.qalipsis.plugins.timescaledb.meter.TimescaledbMeterRegistry
+import io.qalipsis.plugins.timescaledb.meter.TimescaledbMeasurementPublisher
+import io.qalipsis.plugins.timescaledb.meter.TimescaledbMeasurementPublisherFactory
 import io.qalipsis.plugins.timescaledb.utils.DbUtils
 import io.qalipsis.test.coroutines.TestDispatcherProvider
 import io.qalipsis.test.mockk.WithMockk
 import io.r2dbc.pool.ConnectionPool
 import io.r2dbc.postgresql.client.SSLMode
 import io.r2dbc.spi.Connection
-import jakarta.annotation.PostConstruct
 import jakarta.inject.Inject
 import org.junit.jupiter.api.AfterEach
+import org.junit.jupiter.api.BeforeEach
 import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.extension.RegisterExtension
 import org.testcontainers.containers.JdbcDatabaseContainer
@@ -57,8 +61,6 @@ import reactor.core.publisher.Mono
 import java.math.BigDecimal
 import java.time.Duration
 import java.time.Instant
-import java.time.temporal.ChronoUnit
-import java.util.concurrent.atomic.AtomicInteger
 import kotlin.math.pow
 
 
@@ -68,7 +70,9 @@ import kotlin.math.pow
 internal class TimeSeriesMeterRecordConverterIntegrationTest : TestPropertyProvider {
 
     @Inject
-    private lateinit var meterRegistry: TimescaledbMeterRegistry
+    protected lateinit var measurementPublisherFactory: TimescaledbMeasurementPublisherFactory
+
+    private lateinit var timescaledbMeasurementPublisher: TimescaledbMeasurementPublisher
 
     @Inject
     private lateinit var timeSeriesMeterRecordConverter: TimeSeriesMeterRecordConverter
@@ -79,19 +83,13 @@ internal class TimeSeriesMeterRecordConverterIntegrationTest : TestPropertyProvi
 
     private lateinit var connection: ConnectionPool
 
-    @MockK("The mocked clock")
-    private lateinit var clock: Clock
-
-    private lateinit var meter: Meter
-
-    @PostConstruct
-    fun init() {
-        meterRegistry.setProperty("clock", clock)
+    @BeforeEach
+    fun initPublisher() {
+        timescaledbMeasurementPublisher = measurementPublisherFactory.getPublisher() as TimescaledbMeasurementPublisher
     }
 
     @AfterEach
     internal fun tearDown() {
-        meterRegistry.remove(meter)
         clearDatabase()
     }
 
@@ -104,50 +102,74 @@ internal class TimeSeriesMeterRecordConverterIntegrationTest : TestPropertyProvi
     }
 
     @Test
-    internal fun `should deserialize a minimal meter`() {
+    internal fun `should deserialize a minimal meter`() = testDispatcherProvider.run {
         // given
-        val clockTime = mockClock()
-        meter = meterRegistry.timer("my-meter")
+        val now = Instant.now()
+        val timer = mockk<Timer> {
+            every { id } returns mockk<Meter.Id> {
+                every { meterName } returns "my-meter"
+                every { tags } returns emptyMap()
+                every { type } returns MeterType.TIMER
+                every { scenarioName } returns "SCENARIO one"
+                every { campaignKey } returns "first campaign 5473653"
+                every { stepName } returns "step uno"
+            }
+        }
 
         // when
-        meterRegistry.publish()
+        timescaledbMeasurementPublisher.publish(listOf(mockk<MeterSnapshot<Timer>> {
+            every { timestamp } returns now
+            every { meter } returns timer
+            every { measurements } returns listOf(MeasurementMetric(9.0, Statistic.VALUE))
+        }))
 
         // then
         val result = readRecords()
         assertThat(result.last()).isDataClassEqualTo(
             TimeSeriesMeter(
                 name = "my-meter",
-                timestamp = clockTime,
+                timestamp = now,
                 type = "timer",
-                count = 0L,
+                count = 9L,
                 meanDuration = Duration.ZERO,
                 maxDuration = Duration.ZERO,
-                sumDuration = Duration.ZERO
+                sumDuration = Duration.ZERO,
+                campaign = "first campaign 5473653",
+                scenario = "scenario one"
             )
         )
     }
 
     @Test
-    internal fun `should deserialize a timer`() {
+    internal fun `should deserialize a timer`() = testDispatcherProvider.run {
         // given
-        val initClockTime = mockClock()
-        var sum = 0
-        meter = Timer.builder("my-meter")
-            .tags(
-                "tenant", "my-tenant", "campaign", "my-campaign", "scenario", "my-scenario",
-                "tag-1", "value-1", "tag-2", "value-2"
-            )
-            .register(meterRegistry)
-            .apply {
-                repeat(100) {
-                    sum += (it + 1)
-                    record(Duration.ofMinutes(it + 1L))
-                }
+        val now = Instant.now()
+        val timer = mockk<Timer> {
+            every { id } returns mockk<Meter.Id> {
+                every { meterName } returns "my-meter"
+                every { tags } returns mapOf(
+                    "tenant" to "my-tenant", "campaign" to "my-campaign", "scenario" to "my-scenario",
+                    "tag-1" to "value-1", "tag-2" to "value-2"
+                )
+                every { type } returns MeterType.TIMER
+                every { scenarioName } returns "my-scenario"
+                every { campaignKey } returns "my-campaign"
+                every { stepName } returns "step uno"
             }
+        }
 
         // when
-        val publishClockTime = mockClock(initClockTime + METER_REGISTRY_STEP)
-        meterRegistry.publish()
+        timescaledbMeasurementPublisher.publish(listOf(mockk<MeterSnapshot<Timer>> {
+            every { timestamp } returns now
+            every { meter } returns timer
+            every { measurements } returns listOf(
+                MeasurementMetric(224.0, Statistic.MEAN),
+                MeasurementMetric(178713.0, Statistic.TOTAL_TIME),
+                MeasurementMetric(54328.5, Statistic.MAX),
+                DistributionMeasurementMetric(2548.7, Statistic.PERCENTILE, 25.0),
+                DistributionMeasurementMetric(12548.7, Statistic.PERCENTILE, 99.9)
+            )
+        }))
 
         // then
         val result = readRecords("WHERE tenant = 'my-tenant'")
@@ -156,34 +178,54 @@ internal class TimeSeriesMeterRecordConverterIntegrationTest : TestPropertyProvi
             index(0).isDataClassEqualTo(
                 TimeSeriesMeter(
                     name = "my-meter",
-                    timestamp = publishClockTime,
+                    timestamp = now,
                     campaign = "my-campaign",
                     scenario = "my-scenario",
-                    tags = mapOf("tag-1" to "value-1", "tag-2" to "value-2"),
+                    tags = mapOf(
+                        "tag-1" to "value-1",
+                        "tag-2" to "value-2",
+                        "campaign" to "my-campaign",
+                        "scenario" to "my-scenario"
+                    ),
                     type = "timer",
-                    count = 100L,
-                    meanDuration = Duration.ofMinutes(50).plusSeconds(30),
-                    maxDuration = Duration.ofMinutes(100),
-                    sumDuration = Duration.ofMinutes(sum.toLong()),
+                    count = 0L,
+                    meanDuration = Duration.parse("PT0.000000224S"),
+                    maxDuration = Duration.parse("PT0.000054328S"),
+                    sumDuration = Duration.parse("PT0.000178713S"),
+                    other = mapOf(
+                        "percentile_25.0" to BigDecimal(2548.7),
+                        "percentile_99.9" to BigDecimal(12548.7)
+                    )
                 )
             )
         }
     }
 
     @Test
-    internal fun `should deserialize a gauge`() {
+    internal fun `should deserialize a gauge`() = testDispatcherProvider.run {
         // given
-        val initClockTime = mockClock()
-        meter = Gauge.builder("my-meter") { AtomicInteger(564) }
-            .tags(
-                "tenant", "my-tenant", "campaign", "my-campaign", "scenario", "my-scenario",
-                "tag-1", "value-1", "tag-2", "value-2"
-            )
-            .register(meterRegistry)
+        val now = Instant.now()
+        val gaugeMock = mockk<Gauge> {
+            every { id } returns mockk<Meter.Id> {
+                every { meterName } returns "my-meter"
+                every { tags } returns mapOf(
+                    "tenant" to "my-tenant", "campaign" to "my-campaign", "scenario" to "my-scenario",
+                    "tag-1" to "value-1", "tag-2" to "value-2"
+                )
+                every { type } returns MeterType.GAUGE
+                every { scenarioName } returns "my-scenario"
+                every { campaignKey } returns "my-campaign"
+                every { stepName } returns "step tres"
+            }
+        }
+        val gaugeSnapshot = mockk<MeterSnapshot<Gauge>> {
+            every { timestamp } returns now
+            every { meter } returns gaugeMock
+            every { measurements } returns listOf(MeasurementMetric(564.0, Statistic.VALUE))
+        }
 
         // when
-        val publishClockTime = mockClock(initClockTime + METER_REGISTRY_STEP)
-        meterRegistry.publish()
+        timescaledbMeasurementPublisher.publish(listOf(gaugeSnapshot))
 
         // then
         val result = readRecords("WHERE tenant = 'my-tenant'")
@@ -192,10 +234,15 @@ internal class TimeSeriesMeterRecordConverterIntegrationTest : TestPropertyProvi
             index(0).isDataClassEqualTo(
                 TimeSeriesMeter(
                     name = "my-meter",
-                    timestamp = publishClockTime,
+                    timestamp = now,
                     campaign = "my-campaign",
                     scenario = "my-scenario",
-                    tags = mapOf("tag-1" to "value-1", "tag-2" to "value-2"),
+                    tags = mapOf(
+                        "campaign" to "my-campaign",
+                        "scenario" to "my-scenario",
+                        "tag-1" to "value-1",
+                        "tag-2" to "value-2"
+                    ),
                     type = "gauge",
                     value = BigDecimal("564.000000")
                 )
@@ -204,26 +251,30 @@ internal class TimeSeriesMeterRecordConverterIntegrationTest : TestPropertyProvi
     }
 
     @Test
-    internal fun `should deserialize a counter`() {
+    internal fun `should deserialize a counter`() = testDispatcherProvider.run {
         // given
-        val initClockTime = mockClock()
-        var sum = 0
-        meter = Counter.builder("my-meter")
-            .tags(
-                "tenant", "my-tenant", "campaign", "my-campaign", "scenario", "my-scenario",
-                "tag-1", "value-1", "tag-2", "value-2"
-            )
-            .register(meterRegistry)
-            .apply {
-                repeat(100) {
-                    sum += (it + 1)
-                    this.increment(it + 1.0)
-                }
+        val now = Instant.now()
+        val counterMock = mockk<Counter> {
+            every { id } returns mockk<Meter.Id> {
+                every { meterName } returns "my-meter"
+                every { tags } returns mapOf(
+                    "tenant" to "my-tenant", "campaign" to "my-campaign", "scenario" to "my-scenario",
+                    "tag-1" to "value-1", "tag-2" to "value-2"
+                )
+                every { type } returns MeterType.COUNTER
+                every { scenarioName } returns "my-scenario"
+                every { campaignKey } returns "my-campaign"
+                every { stepName } returns "step uno"
             }
+        }
+        val countSnapshot = mockk<MeterSnapshot<Counter>> {
+            every { timestamp } returns now
+            every { meter } returns counterMock
+            every { measurements } returns listOf(MeasurementMetric(5050.0, Statistic.COUNT))
+        }
 
         // when
-        val publishClockTime = mockClock(initClockTime + METER_REGISTRY_STEP)
-        meterRegistry.publish()
+        timescaledbMeasurementPublisher.publish(listOf(countSnapshot))
 
         // then
         val result = readRecords("WHERE tenant = 'my-tenant'")
@@ -232,10 +283,15 @@ internal class TimeSeriesMeterRecordConverterIntegrationTest : TestPropertyProvi
             index(0).isDataClassEqualTo(
                 TimeSeriesMeter(
                     name = "my-meter",
-                    timestamp = publishClockTime,
+                    timestamp = now,
                     campaign = "my-campaign",
                     scenario = "my-scenario",
-                    tags = mapOf("tag-1" to "value-1", "tag-2" to "value-2"),
+                    tags = mapOf(
+                        "campaign" to "my-campaign",
+                        "scenario" to "my-scenario",
+                        "tag-1" to "value-1",
+                        "tag-2" to "value-2"
+                    ),
                     type = "counter",
                     count = 5050L
                 )
@@ -244,26 +300,38 @@ internal class TimeSeriesMeterRecordConverterIntegrationTest : TestPropertyProvi
     }
 
     @Test
-    internal fun `should deserialize a distribution summary`() {
+    internal fun `should deserialize a distribution summary`() = testDispatcherProvider.run {
         // given
-        val initClockTime = mockClock()
-        var sum = 0
-        meter = DistributionSummary.builder("my-meter")
-            .tags(
-                "tenant", "my-tenant", "campaign", "my-campaign", "scenario", "my-scenario",
-                "tag-1", "value-1", "tag-2", "value-2"
-            )
-            .register(meterRegistry)
-            .apply {
-                repeat(100) {
-                    sum += (it + 1)
-                    this.record(it + 1.0)
-                }
+        val now = Instant.now()
+        val summaryMock = mockk<DistributionSummary> {
+            every { id } returns mockk<Meter.Id> {
+                every { meterName } returns "my-meter"
+                every { tags } returns mapOf(
+                    "tenant" to "my-tenant", "campaign" to "my-campaign", "scenario" to "my-scenario",
+                    "tag-1" to "value-1", "tag-2" to "value-2"
+                )
+                every { type } returns MeterType.DISTRIBUTION_SUMMARY
+                every { scenarioName } returns "my-scenario"
+                every { campaignKey } returns "my-campaign"
+                every { stepName } returns "step quart"
             }
+        }
+        val summarySnapshot = mockk<MeterSnapshot<DistributionSummary>> {
+            every { timestamp } returns now
+            every { meter } returns summaryMock
+            every { measurements } returns listOf(
+                MeasurementMetric(70.0, Statistic.COUNT),
+                MeasurementMetric(17873213.0, Statistic.TOTAL),
+                MeasurementMetric(548.5, Statistic.MEAN),
+                MeasurementMetric(748.5, Statistic.MAX),
+                DistributionMeasurementMetric(2548.7, Statistic.PERCENTILE, 25.0),
+                DistributionMeasurementMetric(12548.7, Statistic.PERCENTILE, 99.9)
+            )
+        }
+        val snapshot = listOf(summarySnapshot)
 
         // when
-        val publishClockTime = mockClock(initClockTime + METER_REGISTRY_STEP)
-        meterRegistry.publish()
+        timescaledbMeasurementPublisher.publish(snapshot)
 
         // then
         val result = readRecords("WHERE tenant = 'my-tenant'")
@@ -272,23 +340,27 @@ internal class TimeSeriesMeterRecordConverterIntegrationTest : TestPropertyProvi
             index(0).isDataClassEqualTo(
                 TimeSeriesMeter(
                     name = "my-meter",
-                    timestamp = publishClockTime,
+                    timestamp = now,
                     campaign = "my-campaign",
                     scenario = "my-scenario",
-                    tags = mapOf("tag-1" to "value-1", "tag-2" to "value-2"),
-                    type = "distribution_summary",
-                    count = 100L,
-                    mean = BigDecimal("50.500000"),
-                    max = BigDecimal("100.000000"),
-                    sum = BigDecimal("$sum.000000"),
+                    tags = mapOf(
+                        "campaign" to "my-campaign",
+                        "scenario" to "my-scenario",
+                        "tag-1" to "value-1",
+                        "tag-2" to "value-2"
+                    ),
+                    type = "summary",
+                    count = 70L,
+                    mean = BigDecimal("548.500000"),
+                    max = BigDecimal("748.500000"),
+                    sum = BigDecimal("17873213.000000"),
+                    other = mapOf(
+                        "percentile_25.0" to BigDecimal(2548.7),
+                        "percentile_99.9" to BigDecimal(12548.7)
+                    )
                 )
             )
         }
-    }
-
-    private fun mockClock(instant: Instant = Instant.now().truncatedTo(ChronoUnit.HOURS)): Instant {
-        every { clock.wallTime() } returns instant.toEpochMilli()
-        return instant
     }
 
     private fun readRecords(clause: String = ""): List<TimeSeriesRecord> {
@@ -317,12 +389,12 @@ internal class TimeSeriesMeterRecordConverterIntegrationTest : TestPropertyProvi
             override val minSize: Int = 1
             override val maxSize: Int = 2
             override val maxIdleTime: Duration = Duration.ofSeconds(30)
+            override val initSchema: Boolean = true
             override val enableSsl: Boolean = false
             override val sslMode: SSLMode = SSLMode.ALLOW
             override val sslRootCert: String? = null
             override val sslCert: String? = null
             override val sslKey: String? = null
-            override val initSchema: Boolean = false
         })
 
         return mapOf(
@@ -334,7 +406,6 @@ internal class TimeSeriesMeterRecordConverterIntegrationTest : TestPropertyProvi
             "meters.export.timescaledb.username" to USERNAME,
             "meters.export.timescaledb.password" to PASSWORD,
             "meters.export.timescaledb.schema" to SCHEMA,
-            "meters.export.timescaledb.step" to "$METER_REGISTRY_STEP",
             "meters.export.timescaledb.autostart" to "false",
         )
     }
@@ -362,8 +433,6 @@ internal class TimeSeriesMeterRecordConverterIntegrationTest : TestPropertyProvi
          * Default schema.
          */
         const val SCHEMA = "meters"
-
-        val METER_REGISTRY_STEP = Duration.ofSeconds(10)
 
         @Container
         @JvmStatic

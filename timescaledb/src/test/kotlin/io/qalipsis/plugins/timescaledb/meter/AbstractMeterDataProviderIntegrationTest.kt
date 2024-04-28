@@ -60,7 +60,9 @@ internal abstract class AbstractMeterDataProviderIntegrationTest : TestPropertyP
     private lateinit var connection: PostgresqlConnectionFactory
 
     @Inject
-    protected lateinit var meterRegistry: TimescaledbMeterRegistry
+    protected lateinit var measurementPublisherFactory: TimescaledbMeasurementPublisherFactory
+
+    private lateinit var timescaledbMeasurementPublisher: TimescaledbMeasurementPublisher
 
     abstract val dbPort: Int
 
@@ -96,6 +98,7 @@ internal abstract class AbstractMeterDataProviderIntegrationTest : TestPropertyP
                 .schema(SCHEMA)
                 .build()
         )
+        timescaledbMeasurementPublisher = measurementPublisherFactory.getPublisher() as TimescaledbMeasurementPublisher
     }
 
     @AfterEach
@@ -112,7 +115,7 @@ internal abstract class AbstractMeterDataProviderIntegrationTest : TestPropertyP
     internal fun `should list the names without filter`() = testDispatcherProvider.run {
         // given
         // Index of constant size are used to make the verification of the alpha sorting easier.
-        meterRegistry.doPublish((100..199).flatMap {
+        timescaledbMeasurementPublisher.doPublish((100..199).flatMap {
             listOf(
                 // In the tenant 1, meters are saved twice to verify the distinct.
                 TimescaledbMeter(
@@ -170,7 +173,7 @@ internal abstract class AbstractMeterDataProviderIntegrationTest : TestPropertyP
     internal fun `should list the names with filter`() = testDispatcherProvider.run {
         // given
         // Index of constant size are used to make the verification of the alpha sorting easier.
-        meterRegistry.doPublish((100..199).flatMap {
+        timescaledbMeasurementPublisher.doPublish((100..199).flatMap {
             listOf(
                 TimescaledbMeter(
                     "my-meter-$it-gauge",
@@ -242,7 +245,7 @@ internal abstract class AbstractMeterDataProviderIntegrationTest : TestPropertyP
     @Timeout(20)
     internal fun `should list the tags without filters`() = testDispatcherProvider.run {
         // given
-        meterRegistry.doPublish(
+        timescaledbMeasurementPublisher.doPublish(
             listOf(
                 TimescaledbMeter(
                     RandomStringUtils.randomAlphabetic(5),
@@ -327,7 +330,7 @@ internal abstract class AbstractMeterDataProviderIntegrationTest : TestPropertyP
         val name2 = RandomStringUtils.randomAlphabetic(5)
         val name3 = RandomStringUtils.randomAlphabetic(5)
         val name4 = RandomStringUtils.randomAlphabetic(5)
-        meterRegistry.doPublish(
+        timescaledbMeasurementPublisher.doPublish(
             listOf(
                 TimescaledbMeter(
                     name1,

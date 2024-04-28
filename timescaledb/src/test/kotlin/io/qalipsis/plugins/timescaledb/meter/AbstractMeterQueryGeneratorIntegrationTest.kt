@@ -89,7 +89,9 @@ internal abstract class AbstractMeterQueryGeneratorIntegrationTest : TestPropert
     protected lateinit var meterQueryGenerator: AbstractMeterQueryGenerator
 
     @Inject
-    protected lateinit var meterRegistry: TimescaledbMeterRegistry
+    protected lateinit var measurementPublisherFactory: TimescaledbMeasurementPublisherFactory
+
+    private lateinit var timescaledbMeasurementPublisher: TimescaledbMeasurementPublisher
 
     @Inject
     private lateinit var timeSeriesMeterRecordConverter: TimeSeriesMeterRecordConverter
@@ -285,7 +287,8 @@ internal abstract class AbstractMeterQueryGeneratorIntegrationTest : TestPropert
                 )
             }
 
-            meterRegistry.doPublish(meters1Tenant1 + meters2Tenant1 + meters1Tenant2 + meters1DefaultTenant + meters2DefaultTenant)
+            timescaledbMeasurementPublisher = measurementPublisherFactory.getPublisher() as TimescaledbMeasurementPublisher
+            timescaledbMeasurementPublisher.doPublish(meters1Tenant1 + meters2Tenant1 + meters1Tenant2 + meters1DefaultTenant + meters2DefaultTenant)
             delay(1000) // Wait for the transaction to be fully committed.
             initialized = true
         }
@@ -676,7 +679,7 @@ internal abstract class AbstractMeterQueryGeneratorIntegrationTest : TestPropert
         @Test
         internal fun `should fetch the values with the not equal numeric value`() =
             testDispatcherProvider.run {
-                // given"
+                // given
                 val query = meterQueryGenerator.prepareQueries(
                     "tenant-1", QueryDescription(
                         QueryClause("name", QueryClauseOperator.IS, "my-meter-1"),

@@ -19,54 +19,54 @@ package io.qalipsis.plugins.timescaledb.meter
 import com.zaxxer.hikari.HikariConfig
 import com.zaxxer.hikari.HikariDataSource
 import io.aerisconsulting.catadioptre.KTestable
-import io.micrometer.core.instrument.Clock
-import io.micrometer.core.instrument.step.StepMeterRegistry
-import io.micrometer.core.instrument.util.NamedThreadFactory
 import io.qalipsis.api.lang.tryAndLogOrNull
 import io.qalipsis.api.logging.LoggerHelper.logger
+import io.qalipsis.api.meters.MeasurementPublisher
+import io.qalipsis.api.meters.MeterSnapshot
 import io.qalipsis.plugins.timescaledb.dataprovider.setBigDecimalOrNull
 import io.qalipsis.plugins.timescaledb.dataprovider.setIntOrNull
 import io.qalipsis.plugins.timescaledb.dataprovider.setStringOrNull
 import io.qalipsis.plugins.timescaledb.liquibase.LiquibaseConfiguration
 import io.qalipsis.plugins.timescaledb.liquibase.LiquibaseRunner
 import org.postgresql.Driver
-import java.time.Instant
-import java.util.concurrent.TimeUnit
 
-internal class TimescaledbMeterRegistry(
+internal class TimescaledbMeasurementPublisher(
     private val config: TimescaledbMeterConfig,
-    private val converter: TimescaledbMeterConverter,
-    clock: Clock
-) : StepMeterRegistry(config, clock) {
+    private val converter: TimescaledbMeterConverter
+) : MeasurementPublisher {
 
     private lateinit var datasource: HikariDataSource
 
-    private val sqlInsertStatement = String.format(SQL, "${config.schema()}.meters")
+    private val sqlInsertStatement = String.format(SQL, "${config.schema}.meters")
 
-    private var schemaInitialized = !config.initSchema()
+    private var schemaInitialized = !config.initSchema
 
     init {
-        if (config.autostart() || config.autoconnect()) {
+        if (config.autostart || config.autoconnect) {
             createOrUpdateSchemaIfRequired()
 
             val poolConfig = HikariConfig()
             poolConfig.isAutoCommit = true
-            poolConfig.schema = config.schema()
-            poolConfig.username = config.username()
-            poolConfig.password = config.password()
+            poolConfig.schema = config.schema
+            poolConfig.username = config.username
+            poolConfig.password = config.password
             poolConfig.driverClassName = Driver::class.java.canonicalName
             // See https://jdbc.postgresql.org/documentation/80/connect.html
-            poolConfig.jdbcUrl = "jdbc:postgresql://${config.host()}:${config.port()}/${config.database()}"
+            poolConfig.jdbcUrl = "jdbc:postgresql://${config.host}:${config.port}/${config.database}"
+            if (config.enableSsl) {
+                poolConfig.dataSourceProperties["ssl"] = "true"
+                poolConfig.dataSourceProperties["sslmode"] = config.sslMode.name
+                config.sslRootCert?.let { poolConfig.dataSourceProperties["sslrootcert"] = it }
+                config.sslCert?.let { poolConfig.dataSourceProperties["sslcert"] = it }
+                config.sslKey?.let { poolConfig.dataSourceProperties["sslkey"] = it }
+            }
 
-            poolConfig.minimumIdle = 1
-            poolConfig.maximumPoolSize = 1
+            poolConfig.minimumIdle = config.minIdleConnection
+            poolConfig.maximumPoolSize = config.maxPoolSize
 
             datasource = HikariDataSource(poolConfig)
         }
 
-        if (config.autostart()) {
-            super.start(DEFAULT_THREAD_FACTORY)
-        }
     }
 
     private fun createOrUpdateSchemaIfRequired() {
@@ -74,36 +74,32 @@ internal class TimescaledbMeterRegistry(
             LiquibaseRunner(
                 LiquibaseConfiguration(
                     changeLog = "db/liquibase-meters-changelog.xml",
-                    host = config.host(),
-                    port = config.port(),
-                    username = config.username(),
-                    password = config.password(),
-                    database = config.database(),
-                    defaultSchemaName = config.schema(),
-                    enableSsl = config.enableSsl(),
-                    sslMode = config.sslMode(),
-                    sslRootCert = config.sslRootCert(),
-                    sslKey = config.sslKey(),
-                    sslCert = config.sslCert()
+                    host = config.host,
+                    port = config.port,
+                    username = config.username,
+                    password = config.password,
+                    database = config.database,
+                    defaultSchemaName = config.schema,
+                    enableSsl = config.enableSsl,
+                    sslMode = config.sslMode,
+                    sslRootCert = config.sslRootCert,
+                    sslKey = config.sslKey,
+                    sslCert = config.sslCert
                 )
             ).run()
             schemaInitialized = true
         }
     }
 
-    override fun stop() {
+    override suspend fun stop() {
         super.stop()
         datasource.close()
         log.debug { "The meter registry publisher was stopped" }
     }
 
-    override fun getBaseTimeUnit(): TimeUnit {
-        return TimeUnit.NANOSECONDS
-    }
-
-    public override fun publish() {
+    override suspend fun publish(meters: Collection<MeterSnapshot<*>>) {
         val timescaledbMeters =
-            converter.convert(meters, Instant.ofEpochMilli(clock.wallTime()), config().namingConvention())
+            converter.convert(meters)
         doPublish(timescaledbMeters)
     }
 
@@ -165,11 +161,8 @@ internal class TimescaledbMeterRegistry(
     }
 
     private companion object {
-
-        val DEFAULT_THREAD_FACTORY = NamedThreadFactory("timescaledb-metrics-publisher")
-
         const val SQL =
-            "INSERT into %s (name, tags, timestamp, tenant, campaign, scenario, type, count, value, sum, mean, active_tasks, duration_nano, unit, max, other) values (?, to_json(?::json), ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)"
+            "INSERT into %s (name, tags, timestamp, tenant, campaign, scenario, type, count, value, sum, mean, active_tasks, duration_nano, unit, max, other) values (?, to_json(?::json), ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, to_json(?::json))"
 
         val log = logger()
     }

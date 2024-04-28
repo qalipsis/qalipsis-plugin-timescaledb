@@ -24,10 +24,21 @@ import assertk.assertions.isEqualTo
 import assertk.assertions.isNotNull
 import assertk.assertions.isNull
 import assertk.assertions.prop
-import io.micrometer.core.instrument.Tag
 import io.micronaut.test.extensions.junit5.annotation.MicronautTest
 import io.micronaut.test.support.TestPropertyProvider
+import io.mockk.every
+import io.mockk.mockk
 import io.qalipsis.api.logging.LoggerHelper.logger
+import io.qalipsis.api.meters.Counter
+import io.qalipsis.api.meters.DistributionMeasurementMetric
+import io.qalipsis.api.meters.DistributionSummary
+import io.qalipsis.api.meters.Gauge
+import io.qalipsis.api.meters.MeasurementMetric
+import io.qalipsis.api.meters.Meter
+import io.qalipsis.api.meters.MeterSnapshot
+import io.qalipsis.api.meters.MeterType
+import io.qalipsis.api.meters.Statistic
+import io.qalipsis.api.meters.Timer
 import io.qalipsis.test.coroutines.TestDispatcherProvider
 import io.qalipsis.test.mockk.WithMockk
 import io.r2dbc.pool.ConnectionPool
@@ -48,21 +59,21 @@ import reactor.core.publisher.Mono
 import java.math.BigDecimal
 import java.sql.Timestamp
 import java.time.Duration
+import java.time.Instant
 import java.time.OffsetDateTime
-import java.util.concurrent.atomic.AtomicInteger
 
 @Testcontainers
 @MicronautTest(environments = ["timescaledb"], startApplication = false)
 @WithMockk
 @Timeout(60)
-internal abstract class AbstractTimescaledbMetersRegistryIntegrationTest : TestPropertyProvider {
+internal abstract class AbstractTimescaledbMeasurementPublisherIntegrationTest : TestPropertyProvider {
 
     @JvmField
     @RegisterExtension
     protected val testDispatcherProvider = TestDispatcherProvider()
 
     @Inject
-    private lateinit var meterRegistryFactory: TimescaledbMeterRegistryFactory
+    private lateinit var meterRegistryFactory: TimescaledbMeasurementPublisherFactory
 
     private lateinit var connection: ConnectionPool
 
@@ -71,7 +82,6 @@ internal abstract class AbstractTimescaledbMetersRegistryIntegrationTest : TestP
     override fun getProperties(): Map<String, String> {
         return mapOf(
             "meters.export.enabled" to "true",
-
             "meters.export.timescaledb.enabled" to "true",
             "meters.export.timescaledb.username" to USERNAME,
             "meters.export.timescaledb.password" to PASSWORD,
@@ -79,7 +89,6 @@ internal abstract class AbstractTimescaledbMetersRegistryIntegrationTest : TestP
             "meters.export.timescaledb.host" to "localhost",
             "meters.export.timescaledb.port" to "$dbPort",
             "meters.export.timescaledb.schema" to "meters",
-            "meters.export.timescaledb.step" to "3s",
             "meters.export.timescaledb.batchSize" to "2",
 
             "logging.level.io.qalipsis.plugins.timescaledb.meter" to "TRACE"
@@ -108,54 +117,81 @@ internal abstract class AbstractTimescaledbMetersRegistryIntegrationTest : TestP
     @Timeout(10)
     fun `should export data`() = testDispatcherProvider.run {
         // given
-        val meterRegistry = meterRegistryFactory.timescaleRegistry()
+        val measurementPublisher = meterRegistryFactory.getPublisher()
 
-        meterRegistry.timer("1-the-timer").apply {
-            record(Duration.ofMillis(12))
-            record(Duration.ofMillis(8))
+        val counterMock = mockk<Counter> {
+            every { id } returns mockk<Meter.Id> {
+                every { meterName } returns "2-the-counter"
+                every { tags } returns mapOf("first-tag-key" to "first-tag-value")
+                every { type } returns MeterType.COUNTER
+                every { scenarioName } returns "scenario-1"
+                every { campaignKey } returns "campaign-1"
+                every { stepName } returns "step uno"
+            }
         }
-        meterRegistry.counter(
-            "2-the-counter",
-            "first-tag-key",
-            "first-tag-value",
-            "tenant",
-            "tenant-1",
-            "campaign",
-            "campaign-1",
-            "scenario",
-            "scenario-1"
-        ).apply {
-            increment(8.80)
-            increment(2.40)
+        val timerMock = mockk<Timer> {
+            every { id } returns mockk<Meter.Id> {
+                every { meterName } returns "1-the-timer"
+                every { tags } returns emptyMap()
+                every { type } returns MeterType.TIMER
+                every { scenarioName } returns "SCENARIO two"
+                every { campaignKey } returns "second campaign 47628233"
+                every { stepName } returns "step dos"
+            }
         }
-        meterRegistry.summary(
-            "3-the-summary",
-            "summary-tag",
-            "summary-value",
-            "tenant",
-            "tenant-2",
-            "campaign",
-            "campaign-2",
-            "scenario",
-            "scenario-2"
-        ).apply {
-            record(130.60)
-            record(110.40)
-            record(90.20)
+        val gaugeMock = mockk<Gauge> {
+            every { id } returns mockk<Meter.Id> {
+                every { meterName } returns "4-the-gauge"
+                every { tags } returns mapOf("gauge-tag" to "gauge-value")
+                every { type } returns MeterType.GAUGE
+                every { scenarioName } returns "scenario-3"
+                every { campaignKey } returns "campaign-3"
+                every { stepName } returns "step tres"
+            }
         }
-        meterRegistry.gauge(
-            "4-the-gauge",
-            listOf(
-                Tag.of("gauge-tag", "gauge-value"),
-                Tag.of("tenant", "tenant-3"),
-                Tag.of("campaign", "campaign-3"),
-                Tag.of("scenario", "scenario-3")
-            ),
-            AtomicInteger(13)
-        )!!.apply {
-            incrementAndGet()
-            addAndGet(6)
+        val summaryMock = mockk<DistributionSummary> {
+            every { id } returns mockk<Meter.Id> {
+                every { meterName } returns "3-the-summary"
+                every { tags } returns mapOf("summary-tag" to "summary-value")
+                every { type } returns MeterType.DISTRIBUTION_SUMMARY
+                every { scenarioName } returns "scenario-2"
+                every { campaignKey } returns "campaign-2"
+                every { stepName } returns "step quart"
+            }
         }
+        val now = Instant.now()
+        val countSnapshot = mockk<MeterSnapshot<Counter>> {
+            every { timestamp } returns now
+            every { meter } returns counterMock
+            every { measurements } returns listOf(MeasurementMetric(8.80, Statistic.COUNT))
+        }
+        val gaugeSnapshot = mockk<MeterSnapshot<Gauge>> {
+            every { timestamp } returns now
+            every { meter } returns gaugeMock
+            every { measurements } returns listOf(MeasurementMetric(8.0, Statistic.VALUE))
+        }
+        val timerSnapshot = mockk<MeterSnapshot<Timer>> {
+            every { timestamp } returns now
+            every { meter } returns timerMock
+            every { measurements } returns listOf(
+                MeasurementMetric(10.0, Statistic.MEAN),
+                MeasurementMetric(20.0, Statistic.TOTAL_TIME),
+                MeasurementMetric(12.0, Statistic.MAX),
+                DistributionMeasurementMetric(12.0, Statistic.PERCENTILE, 95.0),
+                DistributionMeasurementMetric(4.0, Statistic.PERCENTILE, 25.0)
+            )
+        }
+        val summarySnapshot = mockk<MeterSnapshot<DistributionSummary>> {
+            every { timestamp } returns now
+            every { meter } returns summaryMock
+            every { measurements } returns listOf(
+                MeasurementMetric(70.0, Statistic.COUNT),
+                MeasurementMetric(17873213.0, Statistic.TOTAL),
+                MeasurementMetric(548.5, Statistic.MAX)
+            )
+        }
+        val meterSnapshot = listOf(timerSnapshot, countSnapshot, gaugeSnapshot, summarySnapshot)
+        measurementPublisher.publish(meterSnapshot)
 
         // when
         do {
@@ -164,13 +200,13 @@ internal abstract class AbstractTimescaledbMetersRegistryIntegrationTest : TestP
                 executeSelect("select name, count(*) from meters where count > 0 or value > 2 group by name order by name")
             log.info { "Found meters: ${recordsCounts.joinToString { it["name"] as String }}" }
         } while (recordsCounts.size < 4) // One count by meter is expected.
-        meterRegistry.stop()
+        measurementPublisher.stop()
 
         // then
         val savedMeters = executeSelect(
             """
-            select meters.* 
-                from meters, (SELECT name, min(timestamp) as timestamp from meters where count > 0 or value > 2 group by name) t 
+            select meters.*
+                from meters, (SELECT name, min(timestamp) as timestamp from meters where count > 0 or value > 2 group by name) t
                 WHERE meters.name = t.name and meters.timestamp = t.timestamp order by meters.name
             """.trimIndent()
         ).map { row ->

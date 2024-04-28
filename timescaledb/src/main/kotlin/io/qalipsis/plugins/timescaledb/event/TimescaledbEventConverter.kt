@@ -18,11 +18,11 @@ package io.qalipsis.plugins.timescaledb.event
 
 import com.fasterxml.jackson.databind.ObjectMapper
 import io.aerisconsulting.catadioptre.KTestable
-import io.micrometer.core.instrument.util.StringEscapeUtils
 import io.qalipsis.api.events.Event
 import io.qalipsis.api.events.EventConverter
 import io.qalipsis.api.events.EventGeoPoint
 import jakarta.inject.Singleton
+import org.apache.commons.text.StringEscapeUtils
 import java.io.IOException
 import java.io.PrintWriter
 import java.io.StringWriter
