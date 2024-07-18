@@ -24,7 +24,6 @@ import io.qalipsis.api.logging.LoggerHelper.logger
 import io.qalipsis.api.meters.MeasurementPublisher
 import io.qalipsis.api.meters.MeterSnapshot
 import io.qalipsis.plugins.timescaledb.dataprovider.setBigDecimalOrNull
-import io.qalipsis.plugins.timescaledb.dataprovider.setIntOrNull
 import io.qalipsis.plugins.timescaledb.dataprovider.setStringOrNull
 import io.qalipsis.plugins.timescaledb.liquibase.LiquibaseConfiguration
 import io.qalipsis.plugins.timescaledb.liquibase.LiquibaseRunner
@@ -97,10 +96,8 @@ internal class TimescaledbMeasurementPublisher(
         log.debug { "The meter registry publisher was stopped" }
     }
 
-    override suspend fun publish(meters: Collection<MeterSnapshot<*>>) {
-        val timescaledbMeters =
-            converter.convert(meters)
-        doPublish(timescaledbMeters)
+    override suspend fun publish(meters: Collection<MeterSnapshot>) {
+        doPublish(converter.convert(meters))
     }
 
     @KTestable
@@ -136,8 +133,6 @@ internal class TimescaledbMeasurementPublisher(
                         statement.setBigDecimalOrNull(bindIndex++, meters.value)
                         statement.setBigDecimalOrNull(bindIndex++, meters.sum)
                         statement.setBigDecimalOrNull(bindIndex++, meters.mean)
-                        statement.setIntOrNull(bindIndex++, meters.activeTasks)
-                        statement.setBigDecimalOrNull(bindIndex++, meters.duration)
                         statement.setStringOrNull(bindIndex++, meters.unit)
                         statement.setBigDecimalOrNull(bindIndex++, meters.max)
                         statement.setStringOrNull(bindIndex++, meters.other)
@@ -162,7 +157,7 @@ internal class TimescaledbMeasurementPublisher(
 
     private companion object {
         const val SQL =
-            "INSERT into %s (name, tags, timestamp, tenant, campaign, scenario, type, count, value, sum, mean, active_tasks, duration_nano, unit, max, other) values (?, to_json(?::json), ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, to_json(?::json))"
+            "INSERT into %s (name, tags, timestamp, tenant, campaign, scenario, type, count, value, sum, mean, unit, max, other) values (?, to_json(?::json), ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, to_json(?::json))"
 
         val log = logger()
     }

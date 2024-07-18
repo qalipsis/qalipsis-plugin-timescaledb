@@ -26,19 +26,14 @@ import io.micronaut.test.support.TestPropertyProvider
 import io.mockk.every
 import io.mockk.mockk
 import io.qalipsis.api.logging.LoggerHelper.logger
-import io.qalipsis.api.meters.Counter
 import io.qalipsis.api.meters.DistributionMeasurementMetric
-import io.qalipsis.api.meters.DistributionSummary
-import io.qalipsis.api.meters.Gauge
 import io.qalipsis.api.meters.MeasurementMetric
 import io.qalipsis.api.meters.Meter
 import io.qalipsis.api.meters.MeterSnapshot
 import io.qalipsis.api.meters.MeterType
 import io.qalipsis.api.meters.Statistic
-import io.qalipsis.api.meters.Timer
 import io.qalipsis.api.report.TimeSeriesMeter
 import io.qalipsis.api.report.TimeSeriesRecord
-import io.qalipsis.plugins.timescaledb.TimescaleDbContainerProvider
 import io.qalipsis.plugins.timescaledb.meter.TimescaledbMeasurementPublisher
 import io.qalipsis.plugins.timescaledb.meter.TimescaledbMeasurementPublisherFactory
 import io.qalipsis.plugins.timescaledb.utils.DbUtils
@@ -53,6 +48,7 @@ import org.junit.jupiter.api.BeforeEach
 import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.extension.RegisterExtension
 import org.testcontainers.containers.JdbcDatabaseContainer
+import org.testcontainers.containers.PostgreSQLContainerProvider
 import org.testcontainers.containers.wait.strategy.Wait
 import org.testcontainers.junit.jupiter.Container
 import org.testcontainers.junit.jupiter.Testcontainers
@@ -105,21 +101,14 @@ internal class TimeSeriesMeterRecordConverterIntegrationTest : TestPropertyProvi
     internal fun `should deserialize a minimal meter`() = testDispatcherProvider.run {
         // given
         val now = Instant.now()
-        val timer = mockk<Timer> {
-            every { id } returns mockk<Meter.Id> {
-                every { meterName } returns "my-meter"
-                every { tags } returns emptyMap()
-                every { type } returns MeterType.TIMER
-                every { scenarioName } returns "SCENARIO one"
-                every { campaignKey } returns "first campaign 5473653"
-                every { stepName } returns "step uno"
-            }
-        }
-
         // when
-        timescaledbMeasurementPublisher.publish(listOf(mockk<MeterSnapshot<Timer>> {
+        timescaledbMeasurementPublisher.publish(listOf(mockk<MeterSnapshot> {
             every { timestamp } returns now
-            every { meter } returns timer
+            every { meterId } returns Meter.Id(
+                meterName = "my-meter",
+                type = MeterType.TIMER,
+                tags = emptyMap()
+            )
             every { measurements } returns listOf(MeasurementMetric(9.0, Statistic.VALUE))
         }))
 
@@ -130,12 +119,12 @@ internal class TimeSeriesMeterRecordConverterIntegrationTest : TestPropertyProvi
                 name = "my-meter",
                 timestamp = now,
                 type = "timer",
-                count = 9L,
+                count = 0L,
                 meanDuration = Duration.ZERO,
                 maxDuration = Duration.ZERO,
                 sumDuration = Duration.ZERO,
-                campaign = "first campaign 5473653",
-                scenario = "scenario one"
+                campaign = null,
+                scenario = null
             )
         )
     }
@@ -144,24 +133,22 @@ internal class TimeSeriesMeterRecordConverterIntegrationTest : TestPropertyProvi
     internal fun `should deserialize a timer`() = testDispatcherProvider.run {
         // given
         val now = Instant.now()
-        val timer = mockk<Timer> {
-            every { id } returns mockk<Meter.Id> {
-                every { meterName } returns "my-meter"
-                every { tags } returns mapOf(
-                    "tenant" to "my-tenant", "campaign" to "my-campaign", "scenario" to "my-scenario",
-                    "tag-1" to "value-1", "tag-2" to "value-2"
-                )
-                every { type } returns MeterType.TIMER
-                every { scenarioName } returns "my-scenario"
-                every { campaignKey } returns "my-campaign"
-                every { stepName } returns "step uno"
-            }
-        }
 
         // when
-        timescaledbMeasurementPublisher.publish(listOf(mockk<MeterSnapshot<Timer>> {
+        timescaledbMeasurementPublisher.publish(listOf(mockk<MeterSnapshot> {
             every { timestamp } returns now
-            every { meter } returns timer
+            every { meterId } returns Meter.Id(
+                meterName = "my-meter",
+                type = MeterType.TIMER,
+                tags = mapOf(
+                    "tenant" to "my-tenant",
+                    "campaign" to "my-campaign",
+                    "scenario" to "my-scenario",
+                    "step" to "step number one",
+                    "tag-1" to "value-1",
+                    "tag-2" to "value-2"
+                )
+            )
             every { measurements } returns listOf(
                 MeasurementMetric(224.0, Statistic.MEAN),
                 MeasurementMetric(178713.0, Statistic.TOTAL_TIME),
@@ -184,8 +171,7 @@ internal class TimeSeriesMeterRecordConverterIntegrationTest : TestPropertyProvi
                     tags = mapOf(
                         "tag-1" to "value-1",
                         "tag-2" to "value-2",
-                        "campaign" to "my-campaign",
-                        "scenario" to "my-scenario"
+                        "step" to "step number one",
                     ),
                     type = "timer",
                     count = 0L,
@@ -205,22 +191,20 @@ internal class TimeSeriesMeterRecordConverterIntegrationTest : TestPropertyProvi
     internal fun `should deserialize a gauge`() = testDispatcherProvider.run {
         // given
         val now = Instant.now()
-        val gaugeMock = mockk<Gauge> {
-            every { id } returns mockk<Meter.Id> {
-                every { meterName } returns "my-meter"
-                every { tags } returns mapOf(
-                    "tenant" to "my-tenant", "campaign" to "my-campaign", "scenario" to "my-scenario",
-                    "tag-1" to "value-1", "tag-2" to "value-2"
-                )
-                every { type } returns MeterType.GAUGE
-                every { scenarioName } returns "my-scenario"
-                every { campaignKey } returns "my-campaign"
-                every { stepName } returns "step tres"
-            }
-        }
-        val gaugeSnapshot = mockk<MeterSnapshot<Gauge>> {
+        val gaugeSnapshot = mockk<MeterSnapshot> {
             every { timestamp } returns now
-            every { meter } returns gaugeMock
+            every { meterId } returns Meter.Id(
+                meterName = "my-meter",
+                type = MeterType.GAUGE,
+                tags = mapOf(
+                    "tenant" to "my-tenant",
+                    "campaign" to "my-campaign",
+                    "scenario" to "my-scenario",
+                    "step" to "step number one",
+                    "tag-1" to "value-1",
+                    "tag-2" to "value-2"
+                )
+            )
             every { measurements } returns listOf(MeasurementMetric(564.0, Statistic.VALUE))
         }
 
@@ -238,10 +222,9 @@ internal class TimeSeriesMeterRecordConverterIntegrationTest : TestPropertyProvi
                     campaign = "my-campaign",
                     scenario = "my-scenario",
                     tags = mapOf(
-                        "campaign" to "my-campaign",
-                        "scenario" to "my-scenario",
                         "tag-1" to "value-1",
-                        "tag-2" to "value-2"
+                        "tag-2" to "value-2",
+                        "step" to "step number one",
                     ),
                     type = "gauge",
                     value = BigDecimal("564.000000")
@@ -254,22 +237,20 @@ internal class TimeSeriesMeterRecordConverterIntegrationTest : TestPropertyProvi
     internal fun `should deserialize a counter`() = testDispatcherProvider.run {
         // given
         val now = Instant.now()
-        val counterMock = mockk<Counter> {
-            every { id } returns mockk<Meter.Id> {
-                every { meterName } returns "my-meter"
-                every { tags } returns mapOf(
-                    "tenant" to "my-tenant", "campaign" to "my-campaign", "scenario" to "my-scenario",
-                    "tag-1" to "value-1", "tag-2" to "value-2"
-                )
-                every { type } returns MeterType.COUNTER
-                every { scenarioName } returns "my-scenario"
-                every { campaignKey } returns "my-campaign"
-                every { stepName } returns "step uno"
-            }
-        }
-        val countSnapshot = mockk<MeterSnapshot<Counter>> {
+        val countSnapshot = mockk<MeterSnapshot> {
             every { timestamp } returns now
-            every { meter } returns counterMock
+            every { meterId } returns Meter.Id(
+                meterName = "my-meter",
+                type = MeterType.COUNTER,
+                tags = mapOf(
+                    "tenant" to "my-tenant",
+                    "campaign" to "my-campaign",
+                    "scenario" to "my-scenario",
+                    "step" to "step number one",
+                    "tag-1" to "value-1",
+                    "tag-2" to "value-2"
+                )
+            )
             every { measurements } returns listOf(MeasurementMetric(5050.0, Statistic.COUNT))
         }
 
@@ -287,10 +268,9 @@ internal class TimeSeriesMeterRecordConverterIntegrationTest : TestPropertyProvi
                     campaign = "my-campaign",
                     scenario = "my-scenario",
                     tags = mapOf(
-                        "campaign" to "my-campaign",
-                        "scenario" to "my-scenario",
                         "tag-1" to "value-1",
-                        "tag-2" to "value-2"
+                        "tag-2" to "value-2",
+                        "step" to "step number one",
                     ),
                     type = "counter",
                     count = 5050L
@@ -303,22 +283,20 @@ internal class TimeSeriesMeterRecordConverterIntegrationTest : TestPropertyProvi
     internal fun `should deserialize a distribution summary`() = testDispatcherProvider.run {
         // given
         val now = Instant.now()
-        val summaryMock = mockk<DistributionSummary> {
-            every { id } returns mockk<Meter.Id> {
-                every { meterName } returns "my-meter"
-                every { tags } returns mapOf(
-                    "tenant" to "my-tenant", "campaign" to "my-campaign", "scenario" to "my-scenario",
-                    "tag-1" to "value-1", "tag-2" to "value-2"
-                )
-                every { type } returns MeterType.DISTRIBUTION_SUMMARY
-                every { scenarioName } returns "my-scenario"
-                every { campaignKey } returns "my-campaign"
-                every { stepName } returns "step quart"
-            }
-        }
-        val summarySnapshot = mockk<MeterSnapshot<DistributionSummary>> {
+        val summarySnapshot = mockk<MeterSnapshot> {
             every { timestamp } returns now
-            every { meter } returns summaryMock
+            every { meterId } returns Meter.Id(
+                meterName = "my-meter",
+                type = MeterType.DISTRIBUTION_SUMMARY,
+                tags = mapOf(
+                    "tenant" to "my-tenant",
+                    "campaign" to "my-campaign",
+                    "scenario" to "my-scenario",
+                    "step" to "step number one",
+                    "tag-1" to "value-1",
+                    "tag-2" to "value-2"
+                )
+            )
             every { measurements } returns listOf(
                 MeasurementMetric(70.0, Statistic.COUNT),
                 MeasurementMetric(17873213.0, Statistic.TOTAL),
@@ -344,10 +322,9 @@ internal class TimeSeriesMeterRecordConverterIntegrationTest : TestPropertyProvi
                     campaign = "my-campaign",
                     scenario = "my-scenario",
                     tags = mapOf(
-                        "campaign" to "my-campaign",
-                        "scenario" to "my-scenario",
                         "tag-1" to "value-1",
-                        "tag-2" to "value-2"
+                        "tag-2" to "value-2",
+                        "step" to "step number one",
                     ),
                     type = "summary",
                     count = 70L,
@@ -436,7 +413,7 @@ internal class TimeSeriesMeterRecordConverterIntegrationTest : TestPropertyProvi
 
         @Container
         @JvmStatic
-        val db: JdbcDatabaseContainer<*> = TimescaleDbContainerProvider().newInstance().apply {
+        val db: JdbcDatabaseContainer<*> = PostgreSQLContainerProvider().newInstance().apply {
             withCreateContainerCmdModifier { cmd ->
                 cmd.hostConfig!!.withMemory(128 * 1024.0.pow(2).toLong()).withCpuCount(2)
             }
@@ -446,7 +423,6 @@ internal class TimeSeriesMeterRecordConverterIntegrationTest : TestPropertyProvi
             withDatabaseName(DB_NAME)
             withUsername(USERNAME)
             withPassword(PASSWORD)
-            withCommand("postgres -c shared_preload_libraries=timescaledb -c log_error_verbosity=VERBOSE -c timescaledb.telemetry_level=OFF -c max_connections=100")
             withInitScript("pgsql-init.sql")
         }
     }

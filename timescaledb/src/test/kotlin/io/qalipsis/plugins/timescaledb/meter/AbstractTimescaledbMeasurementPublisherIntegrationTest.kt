@@ -18,8 +18,8 @@ package io.qalipsis.plugins.timescaledb.meter
 
 import assertk.all
 import assertk.assertThat
+import assertk.assertions.any
 import assertk.assertions.hasSize
-import assertk.assertions.index
 import assertk.assertions.isEqualTo
 import assertk.assertions.isNotNull
 import assertk.assertions.isNull
@@ -29,16 +29,12 @@ import io.micronaut.test.support.TestPropertyProvider
 import io.mockk.every
 import io.mockk.mockk
 import io.qalipsis.api.logging.LoggerHelper.logger
-import io.qalipsis.api.meters.Counter
 import io.qalipsis.api.meters.DistributionMeasurementMetric
-import io.qalipsis.api.meters.DistributionSummary
-import io.qalipsis.api.meters.Gauge
 import io.qalipsis.api.meters.MeasurementMetric
 import io.qalipsis.api.meters.Meter
 import io.qalipsis.api.meters.MeterSnapshot
 import io.qalipsis.api.meters.MeterType
 import io.qalipsis.api.meters.Statistic
-import io.qalipsis.api.meters.Timer
 import io.qalipsis.test.coroutines.TestDispatcherProvider
 import io.qalipsis.test.mockk.WithMockk
 import io.r2dbc.pool.ConnectionPool
@@ -58,13 +54,12 @@ import org.testcontainers.junit.jupiter.Testcontainers
 import reactor.core.publisher.Mono
 import java.math.BigDecimal
 import java.sql.Timestamp
-import java.time.Duration
 import java.time.Instant
 import java.time.OffsetDateTime
 
 @Testcontainers
-@MicronautTest(environments = ["timescaledb"], startApplication = false)
 @WithMockk
+@MicronautTest(environments = ["timescaledb"], startApplication = false)
 @Timeout(60)
 internal abstract class AbstractTimescaledbMeasurementPublisherIntegrationTest : TestPropertyProvider {
 
@@ -119,165 +114,192 @@ internal abstract class AbstractTimescaledbMeasurementPublisherIntegrationTest :
         // given
         val measurementPublisher = meterRegistryFactory.getPublisher()
 
-        val counterMock = mockk<Counter> {
-            every { id } returns mockk<Meter.Id> {
-                every { meterName } returns "2-the-counter"
-                every { tags } returns mapOf("first-tag-key" to "first-tag-value")
-                every { type } returns MeterType.COUNTER
-                every { scenarioName } returns "scenario-1"
-                every { campaignKey } returns "campaign-1"
-                every { stepName } returns "step uno"
-            }
-        }
-        val timerMock = mockk<Timer> {
-            every { id } returns mockk<Meter.Id> {
-                every { meterName } returns "1-the-timer"
-                every { tags } returns emptyMap()
-                every { type } returns MeterType.TIMER
-                every { scenarioName } returns "SCENARIO two"
-                every { campaignKey } returns "second campaign 47628233"
-                every { stepName } returns "step dos"
-            }
-        }
-        val gaugeMock = mockk<Gauge> {
-            every { id } returns mockk<Meter.Id> {
-                every { meterName } returns "4-the-gauge"
-                every { tags } returns mapOf("gauge-tag" to "gauge-value")
-                every { type } returns MeterType.GAUGE
-                every { scenarioName } returns "scenario-3"
-                every { campaignKey } returns "campaign-3"
-                every { stepName } returns "step tres"
-            }
-        }
-        val summaryMock = mockk<DistributionSummary> {
-            every { id } returns mockk<Meter.Id> {
-                every { meterName } returns "3-the-summary"
-                every { tags } returns mapOf("summary-tag" to "summary-value")
-                every { type } returns MeterType.DISTRIBUTION_SUMMARY
-                every { scenarioName } returns "scenario-2"
-                every { campaignKey } returns "campaign-2"
-                every { stepName } returns "step quart"
-            }
-        }
         val now = Instant.now()
-        val countSnapshot = mockk<MeterSnapshot<Counter>> {
-            every { timestamp } returns now
-            every { meter } returns counterMock
-            every { measurements } returns listOf(MeasurementMetric(8.80, Statistic.COUNT))
-        }
-        val gaugeSnapshot = mockk<MeterSnapshot<Gauge>> {
-            every { timestamp } returns now
-            every { meter } returns gaugeMock
-            every { measurements } returns listOf(MeasurementMetric(8.0, Statistic.VALUE))
-        }
-        val timerSnapshot = mockk<MeterSnapshot<Timer>> {
-            every { timestamp } returns now
-            every { meter } returns timerMock
-            every { measurements } returns listOf(
-                MeasurementMetric(10.0, Statistic.MEAN),
-                MeasurementMetric(20.0, Statistic.TOTAL_TIME),
-                MeasurementMetric(12.0, Statistic.MAX),
-                DistributionMeasurementMetric(12.0, Statistic.PERCENTILE, 95.0),
-                DistributionMeasurementMetric(4.0, Statistic.PERCENTILE, 25.0)
-            )
-        }
-        val summarySnapshot = mockk<MeterSnapshot<DistributionSummary>> {
-            every { timestamp } returns now
-            every { meter } returns summaryMock
-            every { measurements } returns listOf(
-                MeasurementMetric(70.0, Statistic.COUNT),
-                MeasurementMetric(17873213.0, Statistic.TOTAL),
-                MeasurementMetric(548.5, Statistic.MAX)
-            )
-        }
-        val meterSnapshot = listOf(timerSnapshot, countSnapshot, gaugeSnapshot, summarySnapshot)
-        measurementPublisher.publish(meterSnapshot)
+        val meterSnapshots = listOf(
+            mockk<MeterSnapshot> {
+                every { timestamp } returns now
+                every { meterId } returns Meter.Id(
+                    "my counter",
+                    MeterType.COUNTER,
+                    mapOf(
+                        "scenario" to "first scenario",
+                        "campaign" to "first campaign 5473653",
+                        "step" to "step number one"
+                    )
+                )
+                every { measurements } returns listOf(MeasurementMetric(8.0, Statistic.COUNT))
+            },
+            mockk<MeterSnapshot> {
+                every { timestamp } returns now
+                every { meterId } returns Meter.Id(
+                    "my gauge",
+                    MeterType.GAUGE,
+                    mapOf(
+                        "scenario" to "third scenario",
+                        "campaign" to "third CAMPAIGN 7624839",
+                        "step" to "step number three",
+                        "foo" to "bar",
+                        "any-tag" to "any-value"
+                    )
+                )
+                every { measurements } returns listOf(MeasurementMetric(5.0, Statistic.VALUE))
+            }, mockk<MeterSnapshot> {
+                every { timestamp } returns now
+                every { meterId } returns Meter.Id(
+                    "my timer",
+                    MeterType.TIMER,
+                    mapOf(
+                        "scenario" to "second scenario",
+                        "campaign" to "second campaign 47628233",
+                        "step" to "step number two",
+                    )
+                )
+                every { measurements } returns listOf(
+                    MeasurementMetric(65.0, Statistic.COUNT),
+                    MeasurementMetric(224.0, Statistic.MEAN),
+                    MeasurementMetric(178713.0, Statistic.TOTAL_TIME),
+                    MeasurementMetric(54328.5, Statistic.MAX),
+                    DistributionMeasurementMetric(500000448.5, Statistic.PERCENTILE, 85.0),
+                    DistributionMeasurementMetric(5432844.5, Statistic.PERCENTILE, 50.0),
+                )
+            }, mockk<MeterSnapshot> {
+                every { timestamp } returns now
+                every { meterId } returns Meter.Id(
+                    "my final summary",
+                    MeterType.DISTRIBUTION_SUMMARY,
+                    mapOf(
+                        "scenario" to "fourth scenario",
+                        "campaign" to "fourth CAMPAIGN 283239",
+                        "step" to "step number four",
+                        "dist" to "summary",
+                        "local" to "host"
+                    )
+                )
+                every { measurements } returns listOf(
+                    MeasurementMetric(70.0, Statistic.COUNT),
+                    MeasurementMetric(17873213.0, Statistic.TOTAL),
+                    MeasurementMetric(548.5, Statistic.MAX),
+                    MeasurementMetric(12.5, Statistic.MEAN),
+                    DistributionMeasurementMetric(548.5, Statistic.PERCENTILE, 85.0),
+                    DistributionMeasurementMetric(54328.5, Statistic.PERCENTILE, 50.0),
+                )
+            })
+        measurementPublisher.publish(meterSnapshots)
 
         // when
         do {
             delay(500)
             val recordsCounts =
-                executeSelect("select name, count(*) from meters where count > 0 or value > 2 group by name order by name")
+                executeSelect("select name from meters ")
             log.info { "Found meters: ${recordsCounts.joinToString { it["name"] as String }}" }
         } while (recordsCounts.size < 4) // One count by meter is expected.
         measurementPublisher.stop()
 
         // then
-        val savedMeters = executeSelect(
-            """
-            select meters.*
-                from meters, (SELECT name, min(timestamp) as timestamp from meters where count > 0 or value > 2 group by name) t
-                WHERE meters.name = t.name and meters.timestamp = t.timestamp order by meters.name
-            """.trimIndent()
-        ).map { row ->
-            TimescaledbMeter(
-                name = row["name"] as String,
-                type = row["type"] as String,
-                timestamp = Timestamp.from((row["timestamp"] as OffsetDateTime).toInstant()),
-                tenant = row["tenant"] as String?,
-                campaign = row["campaign"] as String?,
-                scenario = row["scenario"] as String?,
-                tags = (row["tags"] as Json?)?.asString(),
-                count = row["count"] as BigDecimal?,
-                value = row["value"] as BigDecimal?,
-                sum = row["sum"] as BigDecimal?,
-                mean = row["mean"] as BigDecimal?,
-                activeTasks = row["active_tasks"] as Int?,
-                duration = row["duration"] as BigDecimal?,
-                max = row["max"] as BigDecimal?,
-                other = row["other"] as String?
-            )
-        }
+        val savedMeters = executeSelect("select * from meters")
+            .map { row ->
+                TimescaledbMeter(
+                    name = row["name"] as String,
+                    type = row["type"] as String,
+                    timestamp = Timestamp.from((row["timestamp"] as OffsetDateTime).toInstant()),
+                    tenant = row["tenant"] as String?,
+                    campaign = row["campaign"] as String?,
+                    scenario = row["scenario"] as String?,
+                    tags = (row["tags"] as Json?)?.asString(),
+                    count = row["count"] as BigDecimal?,
+                    value = row["value"] as BigDecimal?,
+                    sum = row["sum"] as BigDecimal?,
+                    mean = row["mean"] as BigDecimal?,
+                    max = row["max"] as BigDecimal?,
+                    unit = row["unit"] as String?,
+                    other = (row["other"] as Json?)?.asString()
+                )
+            }
         assertThat(savedMeters).all {
             hasSize(4)
-            index(0).all {
-                prop(TimescaledbMeter::name).isEqualTo("1-the-timer")
-                prop(TimescaledbMeter::timestamp).isNotNull()
-                prop(TimescaledbMeter::type).isEqualTo("timer")
-                prop(TimescaledbMeter::tags).isNull()
-                prop(TimescaledbMeter::count).isNotNull().transform { it.toInt() }.isEqualTo(2)
-                prop(TimescaledbMeter::max).isNotNull().transform { it.toLong() }
-                    .isEqualTo(Duration.ofMillis(12).toNanos())
-                prop(TimescaledbMeter::mean).isNotNull().transform { it.toLong() }
-                    .isEqualTo(Duration.ofMillis(10).toNanos())
-                prop(TimescaledbMeter::sum).isNotNull().transform { it.toLong() }
-                    .isEqualTo(Duration.ofMillis(20).toNanos())
-                prop(TimescaledbMeter::tenant).isNull()
-                prop(TimescaledbMeter::campaign).isNull()
-                prop(TimescaledbMeter::scenario).isNull()
+            any {
+                it.all {
+                    prop(TimescaledbMeter::name).isEqualTo("my timer")
+                    prop(TimescaledbMeter::tenant).isNull()
+                    prop(TimescaledbMeter::campaign).isEqualTo("second campaign 47628233")
+                    prop(TimescaledbMeter::scenario).isEqualTo("second scenario")
+                    prop(TimescaledbMeter::timestamp).isNotNull()
+                    prop(TimescaledbMeter::type).isEqualTo("timer")
+                    prop(TimescaledbMeter::tags).isEqualTo("""{"step": "step number two"}""")
+                    prop(TimescaledbMeter::value).isNull()
+                    prop(TimescaledbMeter::count).isNotNull().transform { it.toInt() }
+                        .isEqualTo(65)
+                    prop(TimescaledbMeter::max).isNotNull().transform { it.toDouble() }
+                        .isEqualTo(54328.5)
+                    prop(TimescaledbMeter::mean).isNotNull().transform { it.toInt() }
+                        .isEqualTo(224)
+                    prop(TimescaledbMeter::sum).isNotNull().transform { it.toInt() }
+                        .isEqualTo(178713)
+                    prop(TimescaledbMeter::unit).isNotNull().isEqualTo("MICROSECONDS")
+                    prop(TimescaledbMeter::other).isNotNull()
+                        .isEqualTo("""{"percentile_50.0": "5432844.5", "percentile_85.0": "500000448.5"}""")
+                }
             }
-            index(1).all {
-                prop(TimescaledbMeter::name).isEqualTo("2-the-counter")
-                prop(TimescaledbMeter::timestamp).isNotNull()
-                prop(TimescaledbMeter::type).isEqualTo("counter")
-                prop(TimescaledbMeter::tags).isEqualTo("""{"first-tag-key": "first-tag-value"}""")
-                prop(TimescaledbMeter::count).isNotNull().transform { it.toDouble() }.isEqualTo(11.2)
-                prop(TimescaledbMeter::tenant).isEqualTo("tenant-1")
-                prop(TimescaledbMeter::campaign).isEqualTo("campaign-1")
-                prop(TimescaledbMeter::scenario).isEqualTo("scenario-1")
+            any {
+                it.all {
+                    prop(TimescaledbMeter::name).isEqualTo("my counter")
+                    prop(TimescaledbMeter::tenant).isNull()
+                    prop(TimescaledbMeter::campaign).isEqualTo("first campaign 5473653")
+                    prop(TimescaledbMeter::scenario).isEqualTo("first scenario")
+                    prop(TimescaledbMeter::timestamp).isNotNull()
+                    prop(TimescaledbMeter::type).isEqualTo("counter")
+                    prop(TimescaledbMeter::tags).isEqualTo("""{"step": "step number one"}""")
+                    prop(TimescaledbMeter::value).isNull()
+                    prop(TimescaledbMeter::count).isNotNull().transform { it.toInt() }
+                        .isEqualTo(8)
+                    prop(TimescaledbMeter::max).isNull()
+                    prop(TimescaledbMeter::mean).isNull()
+                    prop(TimescaledbMeter::sum).isNull()
+                    prop(TimescaledbMeter::unit).isNull()
+                    prop(TimescaledbMeter::other).isNull()
+                }
             }
-            index(2).all {
-                prop(TimescaledbMeter::name).isEqualTo("3-the-summary")
-                prop(TimescaledbMeter::timestamp).isNotNull()
-                prop(TimescaledbMeter::type).isEqualTo("distribution_summary")
-                prop(TimescaledbMeter::tags).isEqualTo("""{"summary-tag": "summary-value"}""")
-                prop(TimescaledbMeter::count).isNotNull().transform { it.toDouble() }.isEqualTo(3.0)
-                prop(TimescaledbMeter::max).isNotNull().transform { it.toDouble() }.isEqualTo(130.6)
-                prop(TimescaledbMeter::mean).isNotNull().transform { it.toDouble() }.isEqualTo(110.4)
-                prop(TimescaledbMeter::sum).isNotNull().transform { it.toDouble() }.isEqualTo(331.2)
-                prop(TimescaledbMeter::tenant).isEqualTo("tenant-2")
-                prop(TimescaledbMeter::campaign).isEqualTo("campaign-2")
-                prop(TimescaledbMeter::scenario).isEqualTo("scenario-2")
+            any {
+                it.all {
+                    prop(TimescaledbMeter::name).isEqualTo("my gauge")
+                    prop(TimescaledbMeter::tenant).isNull()
+                    prop(TimescaledbMeter::campaign).isEqualTo("third CAMPAIGN 7624839")
+                    prop(TimescaledbMeter::scenario).isEqualTo("third scenario")
+                    prop(TimescaledbMeter::timestamp).isNotNull()
+                    prop(TimescaledbMeter::type).isEqualTo("gauge")
+                    prop(TimescaledbMeter::tags).isEqualTo("""{"foo": "bar", "step": "step number three", "any-tag": "any-value"}""")
+                    prop(TimescaledbMeter::value).isNotNull().transform { it.toInt() }
+                        .isEqualTo(5)
+                    prop(TimescaledbMeter::count).isNull()
+                    prop(TimescaledbMeter::max).isNull()
+                    prop(TimescaledbMeter::mean).isNull()
+                    prop(TimescaledbMeter::sum).isNull()
+                    prop(TimescaledbMeter::unit).isNull()
+                    prop(TimescaledbMeter::other).isNull()
+                }
             }
-            index(3).all {
-                prop(TimescaledbMeter::name).isEqualTo("4-the-gauge")
-                prop(TimescaledbMeter::timestamp).isNotNull()
-                prop(TimescaledbMeter::type).isEqualTo("gauge")
-                prop(TimescaledbMeter::tags).isEqualTo("""{"gauge-tag": "gauge-value"}""")
-                prop(TimescaledbMeter::value).isNotNull().transform { it.toDouble() }.isEqualTo(20.0)
-                prop(TimescaledbMeter::tenant).isEqualTo("tenant-3")
-                prop(TimescaledbMeter::campaign).isEqualTo("campaign-3")
-                prop(TimescaledbMeter::scenario).isEqualTo("scenario-3")
+            any {
+                it.all {
+                    prop(TimescaledbMeter::name).isEqualTo("my final summary")
+                    prop(TimescaledbMeter::tenant).isNull()
+                    prop(TimescaledbMeter::campaign).isEqualTo("fourth CAMPAIGN 283239")
+                    prop(TimescaledbMeter::scenario).isEqualTo("fourth scenario")
+                    prop(TimescaledbMeter::timestamp).isNotNull()
+                    prop(TimescaledbMeter::type).isEqualTo("summary")
+                    prop(TimescaledbMeter::tags).isEqualTo("""{"dist": "summary", "step": "step number four", "local": "host"}""")
+                    prop(TimescaledbMeter::value).isNull()
+                    prop(TimescaledbMeter::count).isNotNull().transform { it.toInt() }
+                        .isEqualTo(70)
+                    prop(TimescaledbMeter::max).isNotNull().transform { it.toDouble() }
+                        .isEqualTo(548.5)
+                    prop(TimescaledbMeter::mean).isNotNull().transform { it.toDouble() }
+                        .isEqualTo(12.5)
+                    prop(TimescaledbMeter::sum).isNotNull().transform { it.toInt() }
+                        .isEqualTo(17873213)
+                    prop(TimescaledbMeter::unit).isNull()
+                    prop(TimescaledbMeter::other).isNotNull()
+                        .isEqualTo("""{"percentile_50.0": "54328.5", "percentile_85.0": "548.5"}""")
+                }
             }
         }
     }

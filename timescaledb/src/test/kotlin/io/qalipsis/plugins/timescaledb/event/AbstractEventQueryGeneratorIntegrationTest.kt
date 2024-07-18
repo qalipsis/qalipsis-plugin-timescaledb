@@ -1614,7 +1614,7 @@ internal abstract class AbstractEventQueryGeneratorIntegrationTest : TestPropert
         }
 
         @Test
-        internal fun `should calculate the 99% percentile values`() = testDispatcherProvider.run {
+        internal fun `should calculate the 99 percentile values`() = testDispatcherProvider.run {
             // given
             val query = eventQueryGenerator.prepareQueries(
                 "tenant-1", QueryDescription(

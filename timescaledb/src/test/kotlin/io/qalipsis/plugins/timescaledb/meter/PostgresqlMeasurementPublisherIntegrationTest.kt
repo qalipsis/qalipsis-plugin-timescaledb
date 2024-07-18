@@ -16,7 +16,6 @@
 
 package io.qalipsis.plugins.timescaledb.meter
 
-import org.junit.jupiter.api.Disabled
 import org.testcontainers.containers.JdbcDatabaseContainer
 import org.testcontainers.containers.PostgreSQLContainerProvider
 import org.testcontainers.containers.wait.strategy.Wait
@@ -24,7 +23,6 @@ import org.testcontainers.junit.jupiter.Container
 import java.time.Duration
 import kotlin.math.pow
 
-@Disabled("The test does not pass on Github actions, due to a concurrency race we could not solve so far")
 internal class PostgresqlMeasurementPublisherIntegrationTest : AbstractTimescaledbMeasurementPublisherIntegrationTest() {
 
     override val dbPort: Int

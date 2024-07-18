@@ -16,18 +16,16 @@
 
 package io.qalipsis.plugins.timescaledb.meter
 
-import io.qalipsis.api.meters.Counter
 import io.qalipsis.api.meters.DistributionMeasurementMetric
-import io.qalipsis.api.meters.DistributionSummary
-import io.qalipsis.api.meters.Gauge
 import io.qalipsis.api.meters.Measurement
 import io.qalipsis.api.meters.MeterSnapshot
-import io.qalipsis.api.meters.Timer
+import io.qalipsis.api.meters.MeterType
+import io.qalipsis.api.meters.Statistic
 import io.qalipsis.api.meters.UnsupportedMeterException
 import org.apache.commons.text.StringEscapeUtils
 import java.math.BigDecimal
 import java.sql.Timestamp
-import java.util.concurrent.TimeUnit.NANOSECONDS
+import java.util.concurrent.TimeUnit
 
 /**
  * Converter for QALIPSIS meters for TimescaleDB.
@@ -37,18 +35,28 @@ import java.util.concurrent.TimeUnit.NANOSECONDS
 internal class TimescaledbMeterConverter {
 
     fun convert(
-        meterSnapshots: Collection<MeterSnapshot<*>>
+        meterSnapshots: Collection<MeterSnapshot>
     ): List<TimescaledbMeter> {
         return meterSnapshots.map { snapshot ->
-            val snapshotMeter = snapshot.meter.id
+            val snapshotMeter = snapshot.meterId
             var tenant: String? = null
-            val campaign: String = snapshotMeter.campaignKey.lowercase()
-            val scenario: String = snapshotMeter.scenarioName.lowercase()
+            var campaign: String? = null
+            var scenario: String? = null
 
             val filteredTags = snapshotMeter.tags.mapNotNull { tag ->
                 when (tag.key) {
                     "tenant" -> {
                         tenant = tag.value
+                        null
+                    }
+
+                    "campaign" -> {
+                        campaign = tag.value
+                        null
+                    }
+
+                    "scenario" -> {
+                        scenario = tag.value
                         null
                     }
 
@@ -60,25 +68,25 @@ internal class TimescaledbMeterConverter {
                 }
             }
             val serializedTags = if (filteredTags.isNotEmpty()) {
-                filteredTags.joinToString(",", prefix = "{", postfix = "}")
+                filteredTags.sorted().joinToString(",", prefix = "{", postfix = "}")
             } else {
                 null
             }
 
             val timescaledbMeter = TimescaledbMeter(
                 timestamp = Timestamp.from(snapshot.timestamp),
-                type = snapshot.meter.id.type.value,
-                name = snapshot.meter.id.meterName,
+                type = snapshot.meterId.type.value,
+                name = snapshot.meterId.meterName,
                 tags = serializedTags,
                 tenant = tenant,
                 campaign = campaign,
                 scenario = scenario,
             )
-            when (snapshot.meter) {
-                is Gauge -> convertGauge(snapshot.measurements, timescaledbMeter)
-                is Counter -> convertCounter(snapshot.measurements, timescaledbMeter)
-                is Timer -> convertTimer(snapshot.measurements, timescaledbMeter)
-                is DistributionSummary -> convertSummary(snapshot.measurements, timescaledbMeter)
+            when (snapshot.meterId.type) {
+                MeterType.GAUGE -> convertGauge(snapshot.measurements, timescaledbMeter)
+                MeterType.COUNTER -> convertCounter(snapshot.measurements, timescaledbMeter)
+                MeterType.TIMER -> convertTimer(snapshot.measurements, timescaledbMeter)
+                MeterType.DISTRIBUTION_SUMMARY -> convertSummary(snapshot.measurements, timescaledbMeter)
                 else -> throw UnsupportedMeterException("Meter ${snapshotMeter.meterName} not supported")
             }
         }
@@ -139,12 +147,12 @@ internal class TimescaledbMeterConverter {
             }
         }
         return timescaledbMeter.copy(
-            count = BigDecimal(statToValue["value"] ?: 0.0),
-            sum = BigDecimal(statToValue["total_time"] ?: 0.0),
-            mean = BigDecimal(statToValue["mean"] ?: 0.0),
-            max = BigDecimal(statToValue["max"] ?: 0.0),
+            count = BigDecimal(statToValue[Statistic.COUNT.value] ?: 0.0),
+            sum = BigDecimal(statToValue[Statistic.TOTAL_TIME.value] ?: 0.0),
+            mean = BigDecimal(statToValue[Statistic.MEAN.value] ?: 0.0),
+            max = BigDecimal(statToValue[Statistic.MAX.value] ?: 0.0),
             unit = "$BASE_TIME_UNIT",
-            other = other.takeIf { it.isNotEmpty() }?.joinToString(",", prefix = "{", postfix = "}")
+            other = other.takeIf { it.isNotEmpty() }?.sorted()?.joinToString(",", prefix = "{", postfix = "}")
         )
     }
 
@@ -173,18 +181,17 @@ internal class TimescaledbMeterConverter {
             }
         }
         return timescaledbMeter.copy(
-            count = BigDecimal(statToValue["count"] ?: 0.0),
-            sum = BigDecimal(statToValue["total"] ?: 0.0),
-            mean = BigDecimal(statToValue["mean"] ?: 0.0),
-            max = BigDecimal(statToValue["max"] ?: 0.0),
-            unit = "$BASE_TIME_UNIT",
-            other = other.takeIf { it.isNotEmpty() }?.joinToString(",", prefix = "{", postfix = "}")
+            count = BigDecimal(statToValue[Statistic.COUNT.value] ?: 0.0),
+            sum = BigDecimal(statToValue[Statistic.TOTAL.value] ?: 0.0),
+            mean = BigDecimal(statToValue[Statistic.MEAN.value] ?: 0.0),
+            max = BigDecimal(statToValue[Statistic.MAX.value] ?: 0.0),
+            other = other.takeIf { it.isNotEmpty() }?.sorted()?.joinToString(",", prefix = "{", postfix = "}")
         )
     }
 
     private companion object {
 
-        val BASE_TIME_UNIT = NANOSECONDS
+        val BASE_TIME_UNIT = TimeUnit.MICROSECONDS
 
     }
 
