@@ -61,11 +61,6 @@ import io.r2dbc.pool.ConnectionPool
 import io.r2dbc.postgresql.client.SSLMode
 import io.r2dbc.spi.Connection
 import jakarta.inject.Inject
-import java.sql.Timestamp
-import java.time.Duration
-import java.time.Instant
-import java.time.temporal.ChronoUnit
-import java.util.concurrent.TimeUnit
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.count
@@ -79,6 +74,11 @@ import org.junit.jupiter.api.extension.RegisterExtension
 import org.testcontainers.junit.jupiter.Testcontainers
 import reactor.core.publisher.Flux
 import reactor.core.publisher.Mono
+import java.sql.Timestamp
+import java.time.Duration
+import java.time.Instant
+import java.time.temporal.ChronoUnit
+import java.util.concurrent.TimeUnit
 
 @Testcontainers
 @MicronautTest(startApplication = false, environments = ["standalone", "timescaledb"], transactional = false)
@@ -1798,7 +1798,7 @@ internal abstract class AbstractMeterQueryGeneratorIntegrationTest : TestPropert
         }
 
         @Test
-        internal fun `should calculate the 99% percentile values`() = testDispatcherProvider.run {
+        internal fun `should calculate the 99 percentile values`() = testDispatcherProvider.run {
             // given
             val query = meterQueryGenerator.prepareQueries(
                 "tenant-1", QueryDescription(
@@ -1829,7 +1829,7 @@ internal abstract class AbstractMeterQueryGeneratorIntegrationTest : TestPropert
         }
 
         @Test
-        internal fun `should calculate the 99 9% percentile values`() = testDispatcherProvider.run {
+        internal fun `should calculate the 99 9 percentile values`() = testDispatcherProvider.run {
             // given
             val query = meterQueryGenerator.prepareQueries(
                 "tenant-1", QueryDescription(

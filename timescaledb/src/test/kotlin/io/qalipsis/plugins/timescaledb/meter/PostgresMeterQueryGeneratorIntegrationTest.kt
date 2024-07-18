@@ -46,7 +46,7 @@ internal class PostgresMeterQueryGeneratorIntegrationTest : AbstractMeterQueryGe
     inner class AggregationCalculation : AbstractMeterQueryGeneratorIntegrationTest.AggregationCalculation() {
 
         @Test
-        internal fun `should calculate the 75% percentile values`() = testDispatcherProvider.run {
+        internal fun `should calculate the 75 percentile values`() = testDispatcherProvider.run {
             // given
             val query = meterQueryGenerator.prepareQueries(
                 "tenant-1", QueryDescription(

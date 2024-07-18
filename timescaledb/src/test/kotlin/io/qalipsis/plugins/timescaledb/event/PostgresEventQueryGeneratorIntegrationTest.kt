@@ -46,7 +46,7 @@ internal class PostgresEventQueryGeneratorIntegrationTest : AbstractEventQueryGe
     inner class AggregationCalculation : AbstractEventQueryGeneratorIntegrationTest.AggregationCalculation() {
 
         @Test
-        internal fun `should calculate the 75% percentile values`() = testDispatcherProvider.run {
+        internal fun `should calculate the 75 percentile values`() = testDispatcherProvider.run {
             // given
             val query = eventQueryGenerator.prepareQueries(
                 "tenant-1", QueryDescription(
