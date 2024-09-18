@@ -183,6 +183,43 @@ internal abstract class AbstractTimescaledbMeasurementPublisherIntegrationTest :
                     DistributionMeasurementMetric(548.5, Statistic.PERCENTILE, 85.0),
                     DistributionMeasurementMetric(54328.5, Statistic.PERCENTILE, 50.0),
                 )
+            }, mockk<MeterSnapshot> {
+                every { timestamp } returns now
+                every { meterId } returns Meter.Id(
+                    "my Rate",
+                    MeterType.RATE,
+                    mapOf(
+                        "scenario" to "fifth scenario",
+                        "campaign" to "campaign 39",
+                        "step" to "step number five",
+                        "foo" to "bar",
+                        "local" to "host"
+                    )
+                )
+                every { measurements } returns listOf(
+                    MeasurementMetric(2.0, Statistic.VALUE)
+                )
+            }, mockk<MeterSnapshot> {
+                every { timestamp } returns now
+                every { meterId } returns Meter.Id(
+                    "throughput",
+                    MeterType.THROUGHPUT,
+                    mapOf(
+                        "scenario" to "sixth scenario",
+                        "campaign" to "CEAD@E28339",
+                        "step" to "step number six",
+                        "a" to "b",
+                        "c" to "d"
+                    )
+                )
+                every { measurements } returns listOf(
+                    MeasurementMetric(30.0, Statistic.VALUE),
+                    MeasurementMetric(22.0, Statistic.MEAN),
+                    MeasurementMetric(173.0, Statistic.TOTAL),
+                    MeasurementMetric(42.0, Statistic.MAX),
+                    DistributionMeasurementMetric(42.0, Statistic.PERCENTILE, 85.0),
+                    DistributionMeasurementMetric(30.0, Statistic.PERCENTILE, 50.0),
+                )
             })
         measurementPublisher.publish(meterSnapshots)
 
@@ -192,7 +229,7 @@ internal abstract class AbstractTimescaledbMeasurementPublisherIntegrationTest :
             val recordsCounts =
                 executeSelect("select name from meters ")
             log.info { "Found meters: ${recordsCounts.joinToString { it["name"] as String }}" }
-        } while (recordsCounts.size < 4) // One count by meter is expected.
+        } while (recordsCounts.size < 6) // One count by meter is expected.
         measurementPublisher.stop()
 
         // then
@@ -216,7 +253,7 @@ internal abstract class AbstractTimescaledbMeasurementPublisherIntegrationTest :
                 )
             }
         assertThat(savedMeters).all {
-            hasSize(4)
+            hasSize(6)
             any {
                 it.all {
                     prop(TimescaledbMeter::name).isEqualTo("my timer")
@@ -299,6 +336,48 @@ internal abstract class AbstractTimescaledbMeasurementPublisherIntegrationTest :
                     prop(TimescaledbMeter::unit).isNull()
                     prop(TimescaledbMeter::other).isNotNull()
                         .isEqualTo("""{"percentile_50.0": "54328.5", "percentile_85.0": "548.5"}""")
+                }
+            }
+            any {
+                it.all {
+                    prop(TimescaledbMeter::name).isEqualTo("my Rate")
+                    prop(TimescaledbMeter::tenant).isNull()
+                    prop(TimescaledbMeter::campaign).isEqualTo("campaign 39")
+                    prop(TimescaledbMeter::scenario).isEqualTo("fifth scenario")
+                    prop(TimescaledbMeter::timestamp).isNotNull()
+                    prop(TimescaledbMeter::type).isEqualTo("rate")
+                    prop(TimescaledbMeter::tags).isEqualTo("""{"foo": "bar", "step": "step number five", "local": "host"}""")
+                    prop(TimescaledbMeter::count).isNull()
+                    prop(TimescaledbMeter::value).isNotNull().transform { it.toInt() }
+                        .isEqualTo(2)
+                    prop(TimescaledbMeter::max).isNull()
+                    prop(TimescaledbMeter::mean).isNull()
+                    prop(TimescaledbMeter::sum).isNull()
+                    prop(TimescaledbMeter::unit).isNull()
+                    prop(TimescaledbMeter::other).isNull()
+                }
+            }
+            any {
+                it.all {
+                    prop(TimescaledbMeter::name).isEqualTo("throughput")
+                    prop(TimescaledbMeter::tenant).isNull()
+                    prop(TimescaledbMeter::campaign).isEqualTo("CEAD@E28339")
+                    prop(TimescaledbMeter::scenario).isEqualTo("sixth scenario")
+                    prop(TimescaledbMeter::timestamp).isNotNull()
+                    prop(TimescaledbMeter::type).isEqualTo("throughput")
+                    prop(TimescaledbMeter::tags).isEqualTo("""{"a": "b", "c": "d", "step": "step number six"}""")
+                    prop(TimescaledbMeter::count).isNull()
+                    prop(TimescaledbMeter::value).isNotNull().transform { it.toInt() }
+                        .isEqualTo(30)
+                    prop(TimescaledbMeter::max).isNotNull().transform { it.toDouble() }
+                        .isEqualTo(42.0)
+                    prop(TimescaledbMeter::mean).isNotNull().transform { it.toDouble() }
+                        .isEqualTo(22.0)
+                    prop(TimescaledbMeter::sum).isNotNull().transform { it.toInt() }
+                        .isEqualTo(173)
+                    prop(TimescaledbMeter::unit).isNull()
+                    prop(TimescaledbMeter::other).isNotNull()
+                        .isEqualTo("""{"percentile_50.0": "30", "percentile_85.0": "42"}""")
                 }
             }
         }

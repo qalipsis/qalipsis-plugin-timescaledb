@@ -87,6 +87,8 @@ internal class TimescaledbMeterConverter {
                 MeterType.COUNTER -> convertCounter(snapshot.measurements, timescaledbMeter)
                 MeterType.TIMER -> convertTimer(snapshot.measurements, timescaledbMeter)
                 MeterType.DISTRIBUTION_SUMMARY -> convertSummary(snapshot.measurements, timescaledbMeter)
+                MeterType.RATE -> convertRate(snapshot.measurements, timescaledbMeter)
+                MeterType.THROUGHPUT -> convertThroughput(snapshot.measurements, timescaledbMeter)
                 else -> throw UnsupportedMeterException("Meter ${snapshotMeter.meterName} not supported")
             }
         }
@@ -182,6 +184,54 @@ internal class TimescaledbMeterConverter {
         }
         return timescaledbMeter.copy(
             count = BigDecimal(statToValue[Statistic.COUNT.value] ?: 0.0),
+            sum = BigDecimal(statToValue[Statistic.TOTAL.value] ?: 0.0),
+            mean = BigDecimal(statToValue[Statistic.MEAN.value] ?: 0.0),
+            max = BigDecimal(statToValue[Statistic.MAX.value] ?: 0.0),
+            other = other.takeIf { it.isNotEmpty() }?.sorted()?.joinToString(",", prefix = "{", postfix = "}")
+        )
+    }
+
+    /**
+     * Timescaledb converter for Rate.
+     */
+    private fun convertRate(
+        measurements: Collection<Measurement>,
+        timescaledbMeter: TimescaledbMeter
+    ): TimescaledbMeter {
+        measurements.forEach {
+            if (java.lang.Double.isFinite(it.value)) {
+                return timescaledbMeter.copy(value = BigDecimal(it.value))
+            }
+        }
+        return timescaledbMeter
+    }
+
+    /**
+     * Timescaledb serializer for Throughput.
+     */
+    private fun convertThroughput(
+        measurements: Collection<Measurement>,
+        timescaledbMeter: TimescaledbMeter
+    ): TimescaledbMeter {
+        val statToValue = mutableMapOf<String, Double>()
+        val other = mutableListOf<String>()
+        measurements.forEach { measurement ->
+            val key = measurement.statistic.value
+            val value = BigDecimal(measurement.value).toString()
+            when (measurement) {
+                is DistributionMeasurementMetric -> {
+                    val entry =
+                        """"${
+                            StringEscapeUtils.escapeJson("${key}_${measurement.observationPoint}").lowercase()
+                        }":"$value""""
+                    other.add(entry)
+                }
+
+                else -> statToValue[key] = measurement.value
+            }
+        }
+        return timescaledbMeter.copy(
+            value = BigDecimal(statToValue[Statistic.VALUE.value] ?: 0.0),
             sum = BigDecimal(statToValue[Statistic.TOTAL.value] ?: 0.0),
             mean = BigDecimal(statToValue[Statistic.MEAN.value] ?: 0.0),
             max = BigDecimal(statToValue[Statistic.MAX.value] ?: 0.0),
