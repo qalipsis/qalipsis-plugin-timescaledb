@@ -153,7 +153,7 @@ internal class TimescaledbMeterConverter {
             sum = BigDecimal(statToValue[Statistic.TOTAL_TIME.value] ?: 0.0),
             mean = BigDecimal(statToValue[Statistic.MEAN.value] ?: 0.0),
             max = BigDecimal(statToValue[Statistic.MAX.value] ?: 0.0),
-            unit = "$BASE_TIME_UNIT",
+            unit = "${TimeUnit.MICROSECONDS}",
             other = other.takeIf { it.isNotEmpty() }?.sorted()?.joinToString(",", prefix = "{", postfix = "}")
         )
     }
@@ -237,12 +237,6 @@ internal class TimescaledbMeterConverter {
             max = BigDecimal(statToValue[Statistic.MAX.value] ?: 0.0),
             other = other.takeIf { it.isNotEmpty() }?.sorted()?.joinToString(",", prefix = "{", postfix = "}")
         )
-    }
-
-    private companion object {
-
-        val BASE_TIME_UNIT = TimeUnit.MICROSECONDS
-
     }
 
 }

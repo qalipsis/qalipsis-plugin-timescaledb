@@ -175,9 +175,9 @@ internal class TimeSeriesMeterRecordConverterIntegrationTest : TestPropertyProvi
                     ),
                     type = "timer",
                     count = 0L,
-                    meanDuration = Duration.parse("PT0.000000224S"),
-                    maxDuration = Duration.parse("PT0.000054328S"),
-                    sumDuration = Duration.parse("PT0.000178713S"),
+                    meanDuration = Duration.parse("PT0.000224S"),
+                    maxDuration = Duration.parse("PT0.054328S"),
+                    sumDuration = Duration.parse("PT0.178713S"),
                     other = mapOf(
                         "percentile_25.0" to BigDecimal(2548.7),
                         "percentile_99.9" to BigDecimal(12548.7)

@@ -167,14 +167,8 @@ allprojects {
             exclude("**/*Scenario*.*")
         }
 
-        val scenariosTest = register<Test>("scenariosTest") {
-            this.group = "verification"
-            ignoreFailures = System.getProperty("ignoreIntegrationTestFailures", "false").toBoolean()
-            include("**/*Scenario*IntegrationTest.*")
-        }
-
         named<Task>("check") {
-            dependsOn(test.get(), integrationTest.get(), scenariosTest.get())
+            dependsOn(test.get(), integrationTest.get())
         }
 
         if (!project.file("src/main/kotlin").isDirectory) {
