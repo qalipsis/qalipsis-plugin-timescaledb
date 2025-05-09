@@ -56,16 +56,10 @@
       <column name="mean" type="decimal(24,6)">
         <constraints nullable="true"/>
       </column>
-      <column name="active_tasks" type="int">
-        <constraints nullable="true"/>
-      </column>
-      <column name="duration_nano" type="bigint">
+        <column name="max" type="decimal(24,6)">
         <constraints nullable="true"/>
       </column>
       <column name="unit" type="varchar(20)">
-        <constraints nullable="true"/>
-      </column>
-      <column name="max" type="decimal(24,6)">
         <constraints nullable="true"/>
       </column>
       <column name="other" type="jsonb">
