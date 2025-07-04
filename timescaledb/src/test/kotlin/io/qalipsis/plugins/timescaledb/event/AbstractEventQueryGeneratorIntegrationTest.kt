@@ -125,7 +125,7 @@ internal abstract class AbstractEventQueryGeneratorIntegrationTest : TestPropert
         "events.provider.timescaledb.database" to DB_NAME,
         "events.provider.timescaledb.username" to USERNAME,
         "events.provider.timescaledb.password" to PASSWORD,
-        "events.provider.timescaledb.schema" to SCHEMA
+        "events.provider.timescaledb.schema" to "public"
     )
 
 
@@ -1889,6 +1889,7 @@ internal abstract class AbstractEventQueryGeneratorIntegrationTest : TestPropert
             coroutineScope,
             timeSeriesEventRecordConverter,
             connection,
+            SCHEMA,
             DataRetrievalQueryExecutionContext(
                 tenant = "default-tenant",
                 campaignsReferences = campaigns,
@@ -1917,6 +1918,7 @@ internal abstract class AbstractEventQueryGeneratorIntegrationTest : TestPropert
     ): List<TimeSeriesAggregationResult> {
         return AggregationExecutor(
             connection,
+            SCHEMA,
             AggregationQueryExecutionContext(
                 tenant = "default-tenant",
                 campaignsReferences = campaigns,
@@ -1953,7 +1955,7 @@ internal abstract class AbstractEventQueryGeneratorIntegrationTest : TestPropert
         /**
          * Default schema.
          */
-        const val SCHEMA = "events"
+        const val SCHEMA = "the_events"
 
     }
 }

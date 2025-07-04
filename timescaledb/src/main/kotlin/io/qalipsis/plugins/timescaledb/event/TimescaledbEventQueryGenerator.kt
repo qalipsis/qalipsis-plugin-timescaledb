@@ -31,6 +31,7 @@ internal class TimescaledbEventQueryGenerator : AbstractEventQueryGenerator() {
     ): StringBuilder {
         // We create a time-bucket series to aggregate into them: https://www.postgresql.org/docs/current/functions-srf.html
         // The interval value cannot be bound and must be replaced as a string.
+        val schemaIdentifier = boundParameters[":schema"]!!.identifiers.first()
         val timeframeIdentifier = boundParameters[":timeframe"]!!.identifiers.first()
         val sql =
             StringBuilder("""SELECT public.time_bucket(interval '$timeframeIdentifier ms', events.timestamp) as bucket,""")
@@ -48,7 +49,7 @@ internal class TimescaledbEventQueryGenerator : AbstractEventQueryGenerator() {
             QueryAggregationOperator.PERCENTILE_99_9 -> """ public.approx_percentile(0.999, public.tdigest(100, events.${query.fieldName})) """
         }
         sql.append(" $aggregation AS result, events.campaign AS campaign")
-        sql.append(""" FROM events""")
+        sql.append(""" FROM ${schemaIdentifier}.events""")
         return sql
     }
 

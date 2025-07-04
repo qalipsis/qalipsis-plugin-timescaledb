@@ -42,10 +42,12 @@ import jakarta.inject.Singleton
 @Validated
 internal class TimescaledbEventDataProvider(
     @Named("event-data-provider") connectionPool: ConnectionPool,
+    configuration: TimescaledbEventDataProviderConfiguration,
     eventQueryGenerator: AbstractEventQueryGenerator,
     objectMapper: ObjectMapper
 ) : AbstractDataProvider(
     connectionPool = connectionPool,
+    databaseSchema = configuration.schema,
     databaseTable = "events",
     queryGenerator = eventQueryGenerator,
     objectMapper = objectMapper,

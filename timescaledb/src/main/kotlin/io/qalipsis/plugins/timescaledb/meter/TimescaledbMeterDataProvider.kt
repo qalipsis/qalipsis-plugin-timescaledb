@@ -42,10 +42,12 @@ import jakarta.inject.Singleton
 @Validated
 internal class TimescaledbMeterDataProvider(
     @Named("meter-data-provider") connectionPool: ConnectionPool,
+    configuration: TimescaledbMeterDataProviderConfiguration,
     meterQueryGenerator: AbstractMeterQueryGenerator,
     objectMapper: ObjectMapper
 ) : AbstractDataProvider(
     connectionPool = connectionPool,
+    databaseSchema = configuration.schema,
     databaseTable = "meters",
     queryGenerator = meterQueryGenerator,
     objectMapper = objectMapper,

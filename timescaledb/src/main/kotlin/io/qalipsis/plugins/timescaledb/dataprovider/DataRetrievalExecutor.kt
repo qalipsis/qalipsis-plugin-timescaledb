@@ -50,6 +50,7 @@ internal class DataRetrievalExecutor(
     private val ioCoroutineScope: CoroutineScope,
     private val converter: TimeSeriesRecordConverter,
     private val connectionPool: ConnectionPool,
+    private val databaseSchema: String,
     private val context: DataRetrievalQueryExecutionContext,
     private val countStatement: String,
     private val selectStatement: String,
@@ -72,7 +73,8 @@ internal class DataRetrievalExecutor(
         )
 
         val completedSelectStatement =
-            selectStatement.replace("%limit%", "${context.size}")
+            selectStatement.replace("%schema%", databaseSchema)
+                .replace("%limit%", "${context.size}")
                 .replace("%offset%", "${context.page * context.size}")
                 .replace("%order%", "${context.sort ?: actualBoundParameters[":order"]!!.value}")
 
@@ -80,7 +82,9 @@ internal class DataRetrievalExecutor(
         val selectJob =
             ioCoroutineScope.async { selectRecords(sqlSelectStatement, actualBoundParameters, actualStart, actualEnd) }
 
-        val sqlCountStatement = String.format(countStatement, additionalClauses.toString())
+        val completedCountStatement =
+            countStatement.replace("%schema%", databaseSchema)
+        val sqlCountStatement = String.format(completedCountStatement, additionalClauses.toString())
         val countJob =
             ioCoroutineScope.async { countRecords(sqlCountStatement, actualBoundParameters, actualStart, actualEnd) }
 
@@ -99,7 +103,13 @@ internal class DataRetrievalExecutor(
     ) = Flux.usingWhen(
         connectionPool.create(), { connection ->
             Mono.from(connection.createStatement(sqlStatement).also { statement ->
-                bindArguments(context.tenant, statement, boundParameters, start, end)
+                bindArguments(
+                    tenant = context.tenant,
+                    statement = statement,
+                    boundParameter = boundParameters,
+                    actualStart = start,
+                    actualEnd = end
+                )
             }.execute()).flatMapMany { result ->
                 result.map { row, metadata ->
                     converter.convert(row, metadata)
@@ -114,7 +124,13 @@ internal class DataRetrievalExecutor(
     ) = Flux.usingWhen(
         connectionPool.create(), { connection ->
             Mono.from(connection.createStatement(sqlStatement).also { statement ->
-                bindArguments(context.tenant, statement, boundParameters, start, end)
+                bindArguments(
+                    tenant = context.tenant,
+                    statement = statement,
+                    boundParameter = boundParameters,
+                    actualStart = start,
+                    actualEnd = end
+                )
             }.execute()).flatMapMany { result ->
                 result.map { row, _ ->
                     row.get("count", BigDecimal::class.java)

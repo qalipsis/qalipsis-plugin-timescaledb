@@ -34,9 +34,9 @@ import io.qalipsis.plugins.timescaledb.event.TimescaledbEventConverter
 import io.qalipsis.plugins.timescaledb.event.TimescaledbEventsPublisher
 import io.qalipsis.plugins.timescaledb.event.TimescaledbEventsPublisherConfiguration
 import io.qalipsis.plugins.timescaledb.event.catadioptre.publishConvertedEvents
-import io.qalipsis.plugins.timescaledb.meter.TimescaledbMeter
 import io.qalipsis.plugins.timescaledb.meter.TimescaledbMeasurementPublisher
 import io.qalipsis.plugins.timescaledb.meter.TimescaledbMeasurementPublisherFactory
+import io.qalipsis.plugins.timescaledb.meter.TimescaledbMeter
 import io.qalipsis.plugins.timescaledb.meter.catadioptre.doPublish
 import io.qalipsis.plugins.timescaledb.utils.DbUtils
 import io.qalipsis.test.coroutines.TestDispatcherProvider
@@ -502,12 +502,12 @@ internal abstract class AbstractTimescaledbTimeSeriesDataProviderIntegrationTest
         /**
          * Default meters schema.
          */
-        const val METERS_SCHEMA = "meters"
+        const val METERS_SCHEMA = "the_meters"
 
         /**
          * Default events schema.
          */
-        const val EVENTS_SCHEMA = "events"
+        const val EVENTS_SCHEMA = "the_events"
 
     }
 }

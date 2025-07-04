@@ -86,7 +86,7 @@ internal abstract class AbstractTimescaledbMeasurementPublisherIntegrationTest :
             "meters.export.timescaledb.database" to DB_NAME,
             "meters.export.timescaledb.host" to "localhost",
             "meters.export.timescaledb.port" to "$dbPort",
-            "meters.export.timescaledb.schema" to "meters",
+            "meters.export.timescaledb.schema" to "the_meters",
             "meters.export.timescaledb.batchSize" to "2",
 
             "logging.level.io.qalipsis.plugins.timescaledb.meter" to "TRACE"
@@ -103,7 +103,7 @@ internal abstract class AbstractTimescaledbMeasurementPublisherIntegrationTest :
                             .host("localhost")
                             .username(USERNAME).password(PASSWORD)
                             .database(DB_NAME)
-                            .schema("meters")
+                            .schema("the_meters")
                             .port(dbPort)
                             .build()
                     )
@@ -230,13 +230,13 @@ internal abstract class AbstractTimescaledbMeasurementPublisherIntegrationTest :
         do {
             delay(500)
             val recordsCounts =
-                executeSelect("select name from meters ")
+                executeSelect("select name from the_meters.meters ")
             log.info { "Found meters: ${recordsCounts.joinToString { it["name"] as String }}" }
         } while (recordsCounts.size < 6) // One count by meter is expected.
         measurementPublisher.stop()
 
         // then
-        val savedMeters = executeSelect("select * from meters")
+        val savedMeters = executeSelect("select * from the_meters.meters")
             .map { row ->
                 TimescaledbMeter(
                     name = row["name"] as String,

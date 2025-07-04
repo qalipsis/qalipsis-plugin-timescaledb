@@ -19,7 +19,6 @@
 
 package io.qalipsis.plugins.timescaledb.dataprovider
 
-import io.qalipsis.api.lang.supplyIf
 import io.qalipsis.api.logging.LoggerHelper.logger
 import io.qalipsis.api.query.QueryAggregationOperator
 import io.qalipsis.api.query.QueryClause
@@ -87,6 +86,10 @@ internal abstract class AbstractQueryGenerator(
     ) {
         // The interval value cannot be bound and must be replaced as a string.
         preparedQueries.bindAggregationParameter(
+            ":schema",
+            SerializableBoundParameter(serializedValue = null, SerializableBoundParameter.Type.STRING, "%schema%")
+        )
+        preparedQueries.bindAggregationParameter(
             ":timeframe", SerializableBoundParameter(
                 serializedValue = "${timeframeMillis ?: 10_000}",
                 SerializableBoundParameter.Type.NUMBER,
@@ -126,7 +129,7 @@ internal abstract class AbstractQueryGenerator(
     ) {
         addDefaultParametersForCountAndRetrievalStatement(tenant, preparedQueries)
         val sql = StringBuilder("")
-        sql.append(" FROM $databaseTable WHERE ${databaseTable}.timestamp BETWEEN $1::timestamp AND $2::timestamp AND ${databaseTable}.tenant = $3")
+        sql.append(" FROM %schema%.$databaseTable WHERE ${databaseTable}.timestamp BETWEEN $1::timestamp AND $2::timestamp AND ${databaseTable}.tenant = $3")
 
         if (query.fieldName != null) {
             // If count aggregation and field name are set, select only the records where the field is not null.
@@ -145,6 +148,10 @@ internal abstract class AbstractQueryGenerator(
     }
 
     private fun addDefaultParametersForCountAndRetrievalStatement(tenant: String?, preparedQueries: PreparedQueries) {
+        preparedQueries.bindCountAndRetrievalParameter(
+            ":schema",
+            SerializableBoundParameter(serializedValue = null, SerializableBoundParameter.Type.STRING, "%schema%")
+        )
         preparedQueries.bindCountAndRetrievalParameter(
             ":limit",
             SerializableBoundParameter(serializedValue = "100", SerializableBoundParameter.Type.NUMBER, "%limit%")
