@@ -25,7 +25,7 @@ import io.qalipsis.plugins.timescaledb.dataprovider.AbstractQueryGenerator
 import io.qalipsis.plugins.timescaledb.dataprovider.DataType
 import java.util.concurrent.TimeUnit
 
-internal abstract class AbstractMeterQueryGenerator : AbstractQueryGenerator(
+internal abstract class AbstractMeterQueryGenerator() : AbstractQueryGenerator(
     dataType = DataType.METER,
     databaseTable = "meters",
     queryFields = FIELDS,

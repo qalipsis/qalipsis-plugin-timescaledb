@@ -412,7 +412,7 @@ internal class TimeSeriesMeterRecordConverterIntegrationTest : TestPropertyProvi
         /**
          * Default schema.
          */
-        const val SCHEMA = "meters"
+        const val SCHEMA = "the_meters"
 
         @Container
         @JvmStatic

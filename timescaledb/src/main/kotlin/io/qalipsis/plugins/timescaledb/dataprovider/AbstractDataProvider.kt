@@ -32,6 +32,7 @@ import reactor.core.publisher.Flux
 @Validated
 internal abstract class AbstractDataProvider(
     private val connectionPool: ConnectionPool,
+    private val databaseSchema: String,
     private val databaseTable: String,
     private val queryGenerator: AbstractQueryGenerator,
     private val objectMapper: ObjectMapper,
@@ -50,7 +51,7 @@ internal abstract class AbstractDataProvider(
 
     suspend fun searchNames(tenant: String, filters: Collection<String>, size: Int): Collection<String> {
         val sql =
-            StringBuilder("""SELECT DISTINCT "name" FROM $databaseTable WHERE "tenant" = $1 AND "campaign" IS NOT NULL""")
+            StringBuilder("""SELECT DISTINCT "name" FROM ${databaseSchema}.${databaseTable} WHERE "tenant" = $1 AND "campaign" IS NOT NULL""")
         if (filters.isNotEmpty()) {
             sql.append(""" AND "name" ILIKE any (array[$2])""")
         }
@@ -82,7 +83,7 @@ internal abstract class AbstractDataProvider(
         params["$2"] = excludedTagsArray
         val sql =
             StringBuilder(
-                """SELECT tags.key AS KEY, STRING_AGG(DISTINCT(tags.value), ',' ORDER BY tags.value) AS value FROM $databaseTable AS e, lateral jsonb_each_text(tags) AS tags 
+                """SELECT tags.key AS KEY, STRING_AGG(DISTINCT(tags.value), ',' ORDER BY tags.value) AS value FROM ${databaseSchema}.${databaseTable} AS e, lateral jsonb_each_text(tags) AS tags 
                 |WHERE "tenant" = $1 AND "campaign" IS NOT NULL AND tags.value <> ''""".trimMargin()
             )
         sql.append(""" AND tags.key <> all (array[$2])""")

@@ -77,7 +77,7 @@ internal abstract class AbstractMeterDataProviderIntegrationTest : TestPropertyP
         "meters.provider.timescaledb.username" to USERNAME,
         "meters.provider.timescaledb.password" to PASSWORD,
         "meters.provider.timescaledb.schema" to SCHEMA,
-        "events.provider.timescaledb.init-schema" to "true",
+        "meters.provider.timescaledb.init-schema" to "true",
 
         "meters.export.enabled" to "true",
         "meters.export.timescaledb.enabled" to "true",
@@ -418,7 +418,7 @@ internal abstract class AbstractMeterDataProviderIntegrationTest : TestPropertyP
         /**
          * Default schema.
          */
-        const val SCHEMA = "meters"
+        const val SCHEMA = "the_meters"
 
     }
 }

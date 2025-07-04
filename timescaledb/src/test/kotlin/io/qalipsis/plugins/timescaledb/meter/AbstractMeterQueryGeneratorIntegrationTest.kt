@@ -2132,6 +2132,7 @@ internal abstract class AbstractMeterQueryGeneratorIntegrationTest : TestPropert
             coroutineScope,
             timeSeriesMeterRecordConverter,
             connection,
+            SCHEMA,
             DataRetrievalQueryExecutionContext(
                 tenant = "default-tenant",
                 campaignsReferences = campaigns,
@@ -2161,6 +2162,7 @@ internal abstract class AbstractMeterQueryGeneratorIntegrationTest : TestPropert
     ): List<TimeSeriesAggregationResult> {
         return AggregationExecutor(
             connection,
+            SCHEMA,
             AggregationQueryExecutionContext(
                 tenant = "default-tenant",
                 campaignsReferences = campaigns,
@@ -2198,7 +2200,7 @@ internal abstract class AbstractMeterQueryGeneratorIntegrationTest : TestPropert
         /**
          * Default schema.
          */
-        const val SCHEMA = "meters"
+        const val SCHEMA = "the_meters"
 
     }
 }

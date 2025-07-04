@@ -532,7 +532,7 @@ internal abstract class AbstractEventDataProviderIntegrationTest : TestPropertyP
         /**
          * Default schema.
          */
-        const val SCHEMA = "meters"
+        const val SCHEMA = "the_events"
 
     }
 }

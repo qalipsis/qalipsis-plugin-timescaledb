@@ -61,9 +61,10 @@ internal class TimescaledbTimeSeriesDataProvider(
         preparedQueries: Map<String, String>,
         context: AggregationQueryExecutionContext
     ): Map<String, List<TimeSeriesAggregationResult>> {
-        return prepareAndExecuteConcurrentQueries(preparedQueries) { connectionPool, query ->
+        return prepareAndExecuteConcurrentQueries(preparedQueries) { connectionPool, databaseSchema, query ->
             buildAggregationExecutor(
                 connectionPool,
+                databaseSchema,
                 context,
                 query
             )
@@ -72,10 +73,12 @@ internal class TimescaledbTimeSeriesDataProvider(
 
     private fun buildAggregationExecutor(
         connectionPool: ConnectionPool,
+        databaseSchema: String,
         context: AggregationQueryExecutionContext,
         query: PreparedQueries
     ) = AggregationExecutor(
         connectionPool,
+        databaseSchema,
         context,
         query.aggregationStatement,
         query.aggregationBoundParameters,
@@ -87,9 +90,10 @@ internal class TimescaledbTimeSeriesDataProvider(
         preparedQueries: Map<String, String>,
         context: DataRetrievalQueryExecutionContext
     ): Map<String, Page<TimeSeriesRecord>> {
-        return prepareAndExecuteConcurrentQueries(preparedQueries) { connectionPool, query ->
+        return prepareAndExecuteConcurrentQueries(preparedQueries) { connectionPool, databaseSchema, query ->
             buildRetrievalExecutor(
                 connectionPool,
+                databaseSchema,
                 context,
                 query
             )
@@ -119,6 +123,7 @@ internal class TimescaledbTimeSeriesDataProvider(
 
     private fun buildRetrievalExecutor(
         connectionPool: ConnectionPool,
+        databaseSchema: String,
         context: DataRetrievalQueryExecutionContext,
         query: PreparedQueries
     ) = DataRetrievalExecutor(
@@ -128,6 +133,7 @@ internal class TimescaledbTimeSeriesDataProvider(
             DataType.EVENT -> timeSeriesEventRecordConverter
         },
         connectionPool,
+        databaseSchema,
         context,
         query.countStatement,
         query.retrievalStatement,
@@ -138,16 +144,21 @@ internal class TimescaledbTimeSeriesDataProvider(
 
     private suspend fun <T> prepareAndExecuteConcurrentQueries(
         preparedQueries: Map<String, String>,
-        executorBuilder: (connectionPool: ConnectionPool, query: PreparedQueries) -> AbstractQueryExecutor<T>
+        executorBuilder: (connectionPool: ConnectionPool, databaseSchema: String, query: PreparedQueries) -> AbstractQueryExecutor<T>
     ): Map<String, T> {
         val keyedJobs = preparedQueries
             .mapValues {
                 val query = objectMapper.readValue(it.value, PreparedQueries::class.java)
-                val connectionPool = when (query.dataType) {
-                    DataType.METER -> requireNotNull(meterConnectionPool) { "The TimescaleDB meters provider was not enabled" }
-                    DataType.EVENT -> requireNotNull(eventConnectionPool) { "The TimescaleDB events provider was not enabled" }
+                val (connectionPool, databaseSchema) = when (query.dataType) {
+                    DataType.METER -> requireNotNull(meterConnectionPool) { "The TimescaleDB meters provider was not enabled" } to requireNotNull(
+                        timescaledbMeterDataProviderConfiguration?.schema
+                    ) { "The TimescaleDB meters provider was not enabled" }
+
+                    DataType.EVENT -> requireNotNull(eventConnectionPool) { "The TimescaleDB events provider was not enabled" } to requireNotNull(
+                        timescaledbEventDataProviderConfiguration?.schema
+                    ) { "The TimescaleDB events provider was not enabled" }
                 }
-                val executor = executorBuilder(connectionPool, query)
+                val executor = executorBuilder(connectionPool, databaseSchema, query)
                 ioCoroutineScope.async {
                     withTimeout(Duration.ofSeconds(20).toMillis()) {
                         executor.execute()

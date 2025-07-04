@@ -256,7 +256,7 @@ internal class TimeSeriesEventRecordConverterIntegrationTest : TestPropertyProvi
         /**
          * Default schema.
          */
-        const val SCHEMA = "events"
+        const val SCHEMA = "the_events"
 
         @Container
         @JvmStatic

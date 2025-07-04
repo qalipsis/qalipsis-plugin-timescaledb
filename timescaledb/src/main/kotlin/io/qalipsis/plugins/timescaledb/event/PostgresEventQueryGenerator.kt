@@ -30,6 +30,7 @@ internal class PostgresEventQueryGenerator : AbstractEventQueryGenerator() {
         boundParameters: Map<String, SerializableBoundParameter>
     ): StringBuilder {
         // We create a time-bucket series to aggregate into them: https://www.postgresql.org/docs/current/functions-srf.html
+        val schemaIdentifier = boundParameters[":schema"]!!.identifiers.first()
         val startIdentifier = boundParameters[":start"]!!.identifiers.first()
         val endIdentifier = boundParameters[":end"]!!.identifiers.first()
         val timeframeIdentifier = boundParameters[":timeframe"]!!.identifiers.first()
@@ -50,7 +51,7 @@ internal class PostgresEventQueryGenerator : AbstractEventQueryGenerator() {
             QueryAggregationOperator.PERCENTILE_99_9 -> "percentile_disc(0.999) WITHIN GROUP (ORDER BY events.${query.fieldName})"
         }
         sql.append("$aggregation AS result, events.campaign AS campaign")
-        sql.append(""" FROM events RIGHT JOIN buckets ON events.timestamp BETWEEN buckets.start AND buckets.end""")
+        sql.append(""" FROM ${schemaIdentifier}.events RIGHT JOIN buckets ON events.timestamp BETWEEN buckets.start AND buckets.end""")
 
         return sql
     }

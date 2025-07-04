@@ -276,7 +276,7 @@ internal abstract class AbstractTimescaledbEventsPublisherIntegrationTest {
                 log.info { "Saved events so far: $savedEventsCount" }
             } while (savedEventsCount != totalCount)
         }.inWholeSeconds
-        println("$totalCount events were saved in $elapsed sec (avg: ${totalCount / elapsed} records / sec)")
+        log.info { "$totalCount events were saved in $elapsed sec (avg: ${totalCount / elapsed} records / sec)" }
     }
 
     private suspend fun executeSelect(statement: String): List<Map<String, *>> {
@@ -316,7 +316,7 @@ internal abstract class AbstractTimescaledbEventsPublisherIntegrationTest {
         /**
          * Default schema.
          */
-        const val SCHEMA = "events"
+        const val SCHEMA = "the_events"
 
     }
 }

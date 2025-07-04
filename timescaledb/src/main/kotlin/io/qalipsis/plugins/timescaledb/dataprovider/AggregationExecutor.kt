@@ -47,6 +47,7 @@ import java.time.OffsetDateTime
  */
 internal class AggregationExecutor(
     private val connectionPool: ConnectionPool,
+    private val databaseSchema: String,
     private val context: AggregationQueryExecutionContext,
     private val statement: String,
     private val boundParameters: Map<String, BoundParameter>,
@@ -68,13 +69,24 @@ internal class AggregationExecutor(
         )
 
         val sqlStatement =
-            String.format(statement.replace("%timeframe%", "$actualTimeframe"), additionalClauses.toString())
+            String.format(
+                statement
+                    .replace("%timeframe%", "$actualTimeframe")
+                    .replace("%schema%", databaseSchema),
+                additionalClauses.toString()
+            )
         log.trace { "Executing the prepared statement\n\t$sqlStatement \n\twith the bound parameters\n\t$actualBoundParameters" }
         return Flux.usingWhen(
             connectionPool.create(),
             { connection ->
                 Mono.from(connection.createStatement(sqlStatement).also { statement ->
-                    bindArguments(context.tenant, statement, actualBoundParameters, actualStart, actualEnd)
+                    bindArguments(
+                        tenant = context.tenant,
+                        statement = statement,
+                        boundParameter = actualBoundParameters,
+                        actualStart = actualStart,
+                        actualEnd = actualEnd
+                    )
                 }.execute())
                     .flatMapMany { result ->
                         log.trace { "Received a result to the query" }
